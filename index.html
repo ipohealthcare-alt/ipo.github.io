@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>i-Po</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #FFF8E1;
+            --card-bg: #FFFFFF;
+            --primary-orange: #FF9800; 
+            --primary-green: #66BB6A; 
+            --primary-blue: #4285F4;
+            --text-main: #4E342E;
+            --text-sub: #757575;
+            --accent-purple: #9C27B0;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding-bottom: 90px; }
+        .hidden { display: none !important; }
+        .screen { padding: 20px; max-width: 600px; margin: 0 auto; min-height: 100vh; }
+        .card { background: var(--card-bg); border-radius: 20px; padding: 20px; margin-bottom: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        h1, h2, h3 { margin: 0; font-weight: bold; }
+        .btn-main { background: var(--primary-orange); color: white; border: none; width: 100%; padding: 12px; font-size: 16px; font-weight: bold; border-radius: 30px; cursor: pointer; margin-top: 10px; }
+        .input-box { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #ddd; border-radius: 12px; background: white; box-sizing: border-box; }
+        
+        /* クラスHub */
+        .hub-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 20px; }
+        .class-card { background: white; border-radius: 16px; padding: 20px 15px; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s; }
+        .class-card:active { transform: scale(0.98); }
+        .class-avatar { width: 60px; height: 60px; background: var(--primary-orange); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto 10px auto; }
+        
+        /* 履歴タブ */
+        .history-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 8px; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 12px; text-align: center; transition: 0.2s; }
+        .tab-btn.active { background: var(--primary-orange); color: white; border-color: var(--primary-orange); font-weight: bold; }
+
+        /* ★改良された履歴リストスタイル */
+        .log-card {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; background: #FAFAFA; border-radius: 12px;
+            margin-bottom: 10px; border-left: 5px solid #ddd;
+        }
+        .log-left { display: flex; flex-direction: column; gap: 4px; }
+        .log-badge { 
+            display: inline-block; padding: 4px 8px; border-radius: 6px; 
+            font-size: 12px; font-weight: bold; color: white; width: fit-content;
+        }
+        .bg-walk { background: #4DB6AC; } /* 散歩など */
+        .bg-shop { background: #FF8A65; } /* 買い物など */
+        .bg-house { background: #9575CD; } /* 家事など */
+        .bg-other { background: #90A4AE; }
+        
+        .log-date { font-size: 12px; color: #888; }
+        .log-right { text-align: right; font-size: 14px; font-weight: bold; color: #555; }
+        .log-rpe-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+
+        /* ナビゲーション */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; z-index: 100; }
+        .nav-item { text-align: center; color: #aaa; cursor: pointer; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
+        .nav-item.active { color: var(--primary-blue); }
+
+        /* その他既存スタイル */
+        .action-card { display: flex; align-items: center; cursor: pointer; padding: 25px 20px; }
+        .icon-circle-green { width: 48px; height: 48px; background: var(--primary-green); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; margin-right: 15px; font-size: 28px; }
+        .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .ai-header { display: flex; align-items: center; margin-bottom: 10px; }
+        .icon-brain { color: var(--accent-purple); font-size: 24px; margin-right: 10px; }
+        .timer-display { font-family: 'Roboto Mono', monospace; font-size: 48px; font-weight: bold; color: #333; }
+        .rpe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
+        .rpe-btn { background: #E0E0E0; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #555; }
+        .rpe-btn.selected { background: var(--primary-blue); color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-auth" class="screen" style="justify-content:center; display:flex; flex-direction:column;">
+        <h1 style="color:var(--primary-orange); font-size:40px; margin-bottom:10px; text-align:center;">i-Po</h1>
+        <p style="color:#666; margin-bottom:40px; text-align:center;">健康お守りアプリ</p>
+        <div class="card">
+            <label style="font-size:12px; color:#888;">利用モード</label>
+            <select id="auth-type" class="input-box">
+                <option value="user">ユーザー (ご本人)</option>
+                <option value="watcher">見守り (ご家族・先生)</option>
+            </select>
+            <input type="text" id="auth-user" class="input-box" placeholder="ユーザーID (名前)">
+            <input type="password" id="auth-pass" class="input-box" placeholder="パスワード">
+            <button onclick="auth('login')" class="btn-main">ログイン</button>
+            <div style="text-align:center; margin-top:15px;">
+                <span onclick="auth('signup')" style="color:var(--primary-orange); cursor:pointer;">新規登録</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-hub" class="screen hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="color:var(--text-main);">クラスを選択</h2>
+            <button onclick="logout()" style="border:none; background:none; color:var(--primary-blue);">ログアウト</button>
+        </div>
+        <div id="hub-class-list" class="hub-grid"></div>
+        <div class="card" style="margin-top:30px;">
+            <h3 style="font-size:16px; margin-bottom:10px;">クラス管理</h3>
+            <button onclick="createClass()" class="btn-main" style="background:#fff; color:var(--primary-orange); border:1px solid var(--primary-orange); margin-bottom:10px;">＋ 新規クラスを作成</button>
+            <div style="display:flex; gap:10px;">
+                <input id="hub-join-code" class="input-box" placeholder="クラスコード" style="margin:0;">
+                <button onclick="joinClass()" class="btn-main" style="width:80px; margin:0; background:#999;">参加</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-home" class="screen hidden">
+        <h1 style="font-size:28px; margin:10px 0 20px 0;">ホーム</h1>
+
+        <div class="card action-card" onclick="goToRecord()">
+            <div class="icon-circle-green"><span class="material-icons-round">directions_walk</span></div>
+            <div style="font-weight:bold; font-size:18px;">今日の活動を記録する</div>
+        </div>
+
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">今日の活動概要</div>
+        <div class="card">
+            <div class="summary-row">
+                <div><span class="material-icons-round" style="color:#FB8C00; vertical-align:middle;">local_fire_department</span> 総活動時間</div>
+                <div style="font-weight:bold; font-size:18px;"><span id="sum-time">0</span>分</div>
+            </div>
+            <div class="summary-row">
+                <div><span class="material-icons-round" style="color:#2979FF; vertical-align:middle;">directions_run</span> 歩数</div>
+                <div style="font-weight:bold; font-size:18px;"><span id="sum-steps">0</span>歩</div>
+            </div>
+        </div>
+
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">アプリからのアドバイス</div>
+        <div class="card">
+            <div class="ai-header">
+                <span class="material-icons-round icon-brain">psychology</span>
+                <span style="font-weight:bold;">健康AIアシスタント</span>
+            </div>
+            <div id="ai-advice-text" style="font-size:15px; line-height:1.6;">
+                読み込み中...
+            </div>
+        </div>
+
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">活動履歴</div>
+        <div class="card" style="min-height:200px;">
+            <div class="history-tabs">
+                <div class="tab-btn active" onclick="loadUserHomeData('1d', this)">1日</div>
+                <div class="tab-btn" onclick="loadUserHomeData('1w', this)">1週間</div>
+                <div class="tab-btn" onclick="loadUserHomeData('1m', this)">1ヶ月</div>
+                <div class="tab-btn" onclick="loadUserHomeData('2m', this)">2ヶ月</div>
+            </div>
+            <div id="user-history-list">
+                <div style="text-align:center; color:#aaa; font-size:12px; padding:20px;">データ読み込み中...</div>
+            </div>
+        </div>
+
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">ご家族・お医者さんから</div>
+        <div class="card">
+            <div id="msg-display-area" style="max-height:150px; overflow-y:auto; font-size:14px; color:#555;"></div>
+        </div>
+
+        <div id="bottom-nav" class="bottom-nav">
+            <div class="nav-item active" onclick="goHome()"><span class="material-icons-round" style="font-size:24px;">home</span>ホーム</div>
+            <div class="nav-item" onclick="backToHub()"><span class="material-icons-round" style="font-size:24px;">grid_view</span>クラス切替</div>
+            <div class="nav-item" onclick="goToRecord()"><span class="material-icons-round" style="font-size:24px;">add_circle</span>活動記録</div>
+        </div>
+    </div>
+
+    <div id="screen-watcher-detail" class="screen hidden">
+        <button onclick="backToHub()" style="background:none; border:none; color:var(--primary-blue); cursor:pointer; margin-bottom:10px;">&lt; クラス一覧に戻る</button>
+        <div class="card" style="background:#1967d2; color:white;">
+            <h2 id="watcher-class-title">クラス名</h2>
+            <p id="watcher-class-code" style="font-size:12px; opacity:0.9;">Code: ---</p>
+        </div>
+        
+        <div class="card" style="border-left:5px solid #1967d2;">
+            <div style="font-weight:bold; color:#1967d2; margin-bottom:5px;">✨ AI見守りアドバイス</div>
+            <p id="watcher-ai-msg" style="font-size:14px; margin:0;">分析中...</p>
+        </div>
+
+        <h3 style="margin-bottom:10px;">メンバーの活動状況</h3>
+        <div class="card">
+            <div class="history-tabs">
+                <div class="tab-btn active" onclick="loadWatcherHistory('1d', this)">1日</div>
+                <div class="tab-btn" onclick="loadWatcherHistory('1w', this)">1週間</div>
+                <div class="tab-btn" onclick="loadWatcherHistory('1m', this)">1ヶ月</div>
+                <div class="tab-btn" onclick="loadWatcherHistory('2m', this)">2ヶ月</div>
+            </div>
+            <div id="watcher-member-list"></div>
+        </div>
+
+        <div class="card">
+            <h3>メッセージ送信</h3>
+            <input id="watcher-msg-input" class="input-box" placeholder="メッセージを入力...">
+            <button onclick="sendMessage()" class="btn-main">送信</button>
+        </div>
+    </div>
+
+    <div id="screen-record" class="screen hidden" style="padding-top:40px;">
+        <h2 style="text-align:center; margin-bottom:20px;">活動を記録</h2>
+        <label style="font-weight:bold; display:block; margin-bottom:10px;">1. なんの活動をしましたか？</label>
+        <select id="act-type" class="input-box" onchange="checkActivityType()" style="border:none; padding:15px; border-radius:12px;">
+            <option value="散歩">散歩</option><option value="買い物">買い物</option><option value="家事">家事</option><option value="ラジオ体操">ラジオ体操</option><option value="その他">その他</option>
+        </select>
+        <input type="text" id="act-other-input" class="input-box hidden" placeholder="活動名を入力">
+        
+        <label style="font-weight:bold; display:block; margin-bottom:10px;">2. 活動時間は？</label>
+        <div class="card" style="text-align:center;">
+            <div class="timer-display" id="timer-val">00:00:00</div>
+            <button id="btn-timer" style="background:var(--primary-green); color:white; border:none; padding:15px 60px; border-radius:8px; font-size:20px; font-weight:bold; cursor:pointer;" onclick="toggleTimer()">スタート</button>
+        </div>
+
+        <label style="font-weight:bold; display:block; margin-bottom:10px;">3. どのくらい疲れましたか？</label>
+        <div class="rpe-grid">
+            <button class="rpe-btn" onclick="selectRpe(1, this)">とても楽</button><button class="rpe-btn" onclick="selectRpe(2, this)">楽</button><button class="rpe-btn" onclick="selectRpe(3, this)">普通</button><button class="rpe-btn" onclick="selectRpe(4, this)">ややきつい</button><button class="rpe-btn" onclick="selectRpe(5, this)">きつい</button><button class="rpe-btn" onclick="selectRpe(6, this)">とてもきつい</button>
+        </div>
+        <button onclick="submitLog()" class="btn-main" style="background:white; color:var(--primary-blue); border:1px solid #ddd;">この内容で記録する</button>
+        <button onclick="goHome()" style="background:none; border:none; color:#999; width:100%; margin-top:10px; cursor:pointer;">キャンセル</button>
+    </div>
+
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxpLjNrBrGfq4cQanL36wnALgmUgn_InNOEISAWvUSE48Pdj4VIYXuJ4KynYZwVIlNE/exec"; 
+
+        let currentUser=null, currentClass=null, myClasses=[], userType=null;
+        let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
+
+        // === 1. 認証 & Hub ===
+        async function auth(mode) {
+            const u = document.getElementById('auth-user').value;
+            const p = document.getElementById('auth-pass').value;
+            const t = document.getElementById('auth-type').value;
+            const res = await callAPI({action:mode, username:u, password:p, type:t});
+            if(res.status === 'success') {
+                currentUser = u; userType = t; myClasses = res.classes || [];
+                document.getElementById('screen-auth').classList.add('hidden');
+                showHub();
+            } else alert(res.message);
+        }
+
+        function showHub() {
+            document.getElementById('screen-hub').classList.remove('hidden');
+            document.getElementById('screen-home').classList.add('hidden');
+            document.getElementById('screen-watcher-detail').classList.add('hidden');
+            const grid = document.getElementById('hub-class-list');
+            if(myClasses.length === 0) {
+                grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888;">クラスに参加していません</div>';
+            } else {
+                grid.innerHTML = myClasses.map(c => `
+                    <div class="class-card" onclick="enterClass('${c.id}', '${c.name}')">
+                        <div class="class-avatar">${c.name.charAt(0)}</div>
+                        <div style="font-weight:bold;">${c.name}</div>
+                        <div style="font-size:12px; color:#888;">${c.owner}</div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function enterClass(id, name) {
+            currentClass = id;
+            document.getElementById('screen-hub').classList.add('hidden');
+            if(userType === 'user') {
+                document.getElementById('screen-home').classList.remove('hidden');
+                loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); 
+            } else {
+                document.getElementById('screen-watcher-detail').classList.remove('hidden');
+                document.getElementById('watcher-class-title').innerText = name;
+                document.getElementById('watcher-class-code').innerText = "Code: " + id;
+                loadWatcherHistory('1d', document.querySelector('#screen-watcher-detail .tab-btn'));
+            }
+        }
+        function backToHub() {
+            document.getElementById('screen-home').classList.add('hidden');
+            document.getElementById('screen-watcher-detail').classList.add('hidden');
+            document.getElementById('screen-record').classList.add('hidden');
+            showHub();
+        }
+
+        // === 2. ユーザーホームデータ (履歴 & AIアドバイス) ===
+        async function loadUserHomeData(range, btn) {
+            if(btn) setActiveTab(btn);
+            const container = document.getElementById('user-history-list');
+            container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">読み込み中...</div>';
+            
+            // ★ AIアドバイスと履歴をまとめて取得
+            const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:range});
+            
+            if(res.status === 'success') {
+                // AIアドバイス更新
+                document.getElementById('ai-advice-text').innerText = res.ai_advice;
+                
+                // メッセージ更新
+                const msgArea = document.getElementById('msg-display-area');
+                if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa;">メッセージなし</div>';
+                else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
+
+                // 履歴リスト更新 (見やすく改良)
+                if(res.logs.length === 0) container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">履歴なし</div>';
+                else {
+                    container.innerHTML = res.logs.map(l => {
+                        let bgClass = 'bg-other';
+                        if(l.memo.includes('散歩')) bgClass='bg-walk';
+                        else if(l.memo.includes('買い物')) bgClass='bg-shop';
+                        else if(l.memo.includes('家事')) bgClass='bg-house';
+                        
+                        let rpeColor = '#4CAF50';
+                        if(l.rpe >= 5) rpeColor = '#F44336';
+                        else if(l.rpe >= 3) rpeColor = '#FF9800';
+
+                        return `
+                        <div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};">
+                            <div class="log-left">
+                                <span class="log-badge ${bgClass}">${l.memo}</span>
+                                <span class="log-date">${new Date(l.date).toLocaleString()}</span>
+                            </div>
+                            <div class="log-right">
+                                <div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div>
+                                <div style="font-size:12px; color:#888;">${l.steps}歩</div>
+                            </div>
+                        </div>`;
+                    }).reverse().join('');
+                    
+                    if(range === '1d') {
+                        const totalTime = res.logs.reduce((sum, l) => sum + l.duration, 0);
+                        const maxSteps = Math.max(...res.logs.map(l => l.steps));
+                        document.getElementById('sum-time').innerText = Math.floor(totalTime/60);
+                        document.getElementById('sum-steps').innerText = maxSteps || stepCount;
+                    }
+                }
+            }
+        }
+
+        // === 3. 見守り履歴 ===
+        async function loadWatcherHistory(range, btn) {
+            if(btn) setActiveTab(btn);
+            const container = document.getElementById('watcher-member-list');
+            container.innerHTML = '<div style="text-align:center; padding:10px;">取得中...</div>';
+            const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:range});
+            
+            if(res.status === 'success') {
+                document.getElementById('watcher-ai-msg').innerText = res.ai_advice; // AIアドバイス更新
+                
+                container.innerHTML = "";
+                res.members.forEach(m => {
+                    const logs = res.logs[m] || [];
+                    const logHtml = logs.length ? logs.map(l => 
+                        `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;">
+                            <span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span>
+                            <span>${Math.floor(l.duration/60)}分 / RPE${l.rpe}</span>
+                         </div>`
+                    ).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
+                    
+                    container.innerHTML += `
+                        <div style="border-bottom:1px solid #eee; padding:15px 0;">
+                            <div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${m}</div>
+                            ${logHtml}
+                        </div>`;
+                });
+            }
+        }
+
+        function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+
+        // === 4. クラス管理・その他 ===
+        async function createClass() {
+            const name = prompt("クラス名を入力"); if(!name) return;
+            const res = await callAPI({action:'create_class', class_name:name, username:currentUser});
+            if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); }
+        }
+        async function joinClass() {
+            const code = document.getElementById('hub-join-code').value; if(!code) return;
+            const res = await callAPI({action:'join_class', class_id:code, username:currentUser});
+            if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message);
+        }
+        async function submitLog(){
+            let t=document.getElementById('act-type').value; if(t==='その他') t=document.getElementById('act-other-input').value;
+            const tm=document.getElementById('timer-val').innerText.split(':'); const sec=parseInt(tm[1])*60+parseInt(tm[2]);
+            if(selectedRpeValue===0) return alert("選択してください");
+            await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:sec, rpe:selectedRpeValue, memo:t, steps:stepCount});
+            alert("記録完了"); goHome(); loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn'));
+        }
+        async function sendMessage() {
+            const txt = document.getElementById('watcher-msg-input').value;
+            await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
+            document.getElementById('watcher-msg-input').value=''; alert("送信しました");
+        }
+
+        // 共通・ユーティリティ
+        function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
+        function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); }
+        function checkActivityType(){ document.getElementById('act-other-input').classList.toggle('hidden', document.getElementById('act-type').value!=='その他'); }
+        function toggleTimer(){ const btn=document.getElementById('btn-timer'); if(!isTimerRunning){ startTime=Date.now(); timerInterval=setInterval(()=>{const d=Date.now()-startTime;document.getElementById('timer-val').innerText=`00:${String(Math.floor(d/60000)).padStart(2,'0')}:${String(Math.floor((d%60000)/1000)).padStart(2,'0')}`;},100); isTimerRunning=true; btn.innerText="ストップ"; btn.style.background="#E53935"; } else{ clearInterval(timerInterval); isTimerRunning=false; btn.innerText="スタート"; btn.style.background="#66BB6A"; } }
+        function selectRpe(v,b){ selectedRpeValue=v; document.querySelectorAll('.rpe-btn').forEach(bb=>bb.classList.remove('selected')); b.classList.add('selected'); }
+        async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
+        function logout(){ location.reload(); }
+        
+        // 歩数計
+        const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
+        window.addEventListener('devicemotion', (e)=>{ const a=e.accelerationIncludingGravity; if(!a)return; if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ stepCount++; window.lt=Date.now(); localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); }});
+    </script>
+</body>
+</html>
