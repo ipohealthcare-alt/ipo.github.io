@@ -181,6 +181,11 @@
             <div id="watcher-member-list"></div>
         </div>
 
+        <h3 style="margin-bottom:10px;">メッセージ履歴</h3>
+        <div class="card">
+            <div id="watcher-msg-display-area" style="max-height:150px; overflow-y:auto; font-size:14px; color:#555;"></div>
+        </div>
+
         <div class="card">
             <h3>メッセージ送信</h3>
             <input id="watcher-msg-input" class="input-box" placeholder="メッセージを入力...">
@@ -211,7 +216,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxpLjNrBrGfq4cQanL36wnALgmUgn_InNOEISAWvUSE48Pdj4VIYXuJ4KynYZwVIlNE/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxpLjNrBrGfq4cQanL36wnALgmUgn_InNOEISAWvUSE48Pdj4VIYXuJ4KynYZwVIlNE/exec"; // ★GAS URL設定
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -339,6 +344,11 @@
                     ).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
                     container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${m}</div>${logHtml}</div>`;
                 });
+
+                // ★メッセージ履歴の表示 (見守りモード)
+                const msgArea = document.getElementById('watcher-msg-display-area');
+                if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>';
+                else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
             }
         }
 
@@ -346,7 +356,7 @@
         async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
         async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
         async function submitLog(){ let t=document.getElementById('act-type').value; if(t==='その他') t=document.getElementById('act-other-input').value; const tm=document.getElementById('timer-val').innerText.split(':'); const sec=parseInt(tm[1])*60+parseInt(tm[2]); if(selectedRpeValue===0) return alert("選択してください"); await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:sec, rpe:selectedRpeValue, memo:t, steps:stepCount}); alert("記録完了"); goHome(); loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); }
-        async function sendMessage() { const txt = document.getElementById('watcher-msg-input').value; await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt}); document.getElementById('watcher-msg-input').value=''; alert("送信しました"); }
+        async function sendMessage() { const txt = document.getElementById('watcher-msg-input').value; await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt}); document.getElementById('watcher-msg-input').value=''; alert("送信しました"); loadWatcherHistory('1d'); } // Send後に履歴更新
         function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
         function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); }
         function checkActivityType(){ document.getElementById('act-other-input').classList.toggle('hidden', document.getElementById('act-type').value!=='その他'); }
