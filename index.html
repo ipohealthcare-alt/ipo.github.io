@@ -38,11 +38,19 @@
         .log-date { font-size: 12px; color: #888; }
         .log-right { text-align: right; font-size: 14px; font-weight: bold; color: #555; }
 
-        /* AIチャット */
+        /* チャット (AI・人間共通) */
+        .chat-container { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; padding-right: 5px; }
+        .chat-bubble { padding: 10px 15px; border-radius: 15px; margin-bottom: 8px; font-size: 14px; max-width: 80%; line-height: 1.4; word-wrap: break-word; }
+        .chat-left { align-self: flex-start; background: #F5F5F5; border-bottom-left-radius: 0; color: #333; }
+        .chat-right { align-self: flex-end; background: #E3F2FD; border-bottom-right-radius: 0; color: #0D47A1; }
+        .chat-meta { font-size: 10px; color: #999; margin-bottom: 2px; }
+        
         .ai-chat-bubble { background: #F3E5F5; padding: 15px; border-radius: 15px; border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
         .user-chat-bubble { background: #E3F2FD; padding: 10px 15px; border-radius: 15px; border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; text-align: right; align-self: flex-end; margin-left: auto; width: fit-content; }
-        .ai-input-area { display: flex; gap: 8px; margin-top: 10px; }
-        .ai-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        
+        .chat-input-area { display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .chat-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; background: #fafafa; }
+        .btn-send-icon { background: var(--primary-blue); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-ai-send { background: var(--accent-purple); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* 歩数計スイッチ */
@@ -163,9 +171,13 @@
             </div>
         </div>
 
-        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">ご家族・お医者さんから</div>
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">ご家族・お医者さんとのチャット</div>
         <div class="card">
-            <div id="msg-display-area" style="max-height:150px; overflow-y:auto; font-size:14px; color:#555;"></div>
+            <div id="msg-display-area" class="chat-container"></div>
+            <div class="chat-input-area">
+                <input type="text" id="user-msg-input" class="chat-input" placeholder="メッセージを送る...">
+                <button onclick="sendMessage('user')" class="btn-send-icon"><span class="material-icons-round">send</span></button>
+            </div>
         </div>
 
         <div id="bottom-nav" class="bottom-nav">
@@ -207,15 +219,13 @@
             <div id="watcher-member-list"></div>
         </div>
 
-        <h3 style="margin-bottom:10px;">メッセージ履歴</h3>
+        <h3 style="margin-bottom:10px;">チャットルーム</h3>
         <div class="card">
-            <div id="watcher-msg-display-area" style="max-height:150px; overflow-y:auto; font-size:14px; color:#555;"></div>
-        </div>
-
-        <div class="card">
-            <h3>メッセージ送信</h3>
-            <input id="watcher-msg-input" class="input-box" placeholder="メッセージを入力...">
-            <button onclick="sendMessage()" class="btn-main">送信</button>
+            <div id="watcher-msg-display-area" class="chat-container"></div>
+            <div class="chat-input-area">
+                <input id="watcher-msg-input" class="chat-input" placeholder="メッセージを入力...">
+                <button onclick="sendMessage('watcher')" class="btn-send-icon"><span class="material-icons-round">send</span></button>
+            </div>
         </div>
     </div>
 
@@ -248,6 +258,7 @@
         let cachedUserLogs = [];
         let cachedWatcherLogs = {};
         let chatHistory = [];
+        let autoRefreshInterval = null; // ポーリング用
 
         async function auth(mode) {
             const u = document.getElementById('auth-user').value;
@@ -258,26 +269,18 @@
                 currentUser = u; userType = t; myClasses = res.classes || [];
                 document.getElementById('screen-auth').classList.add('hidden');
                 showHub();
-                loadChatHistory(); // ★履歴ロード
+                loadChatHistory();
             } else alert(res.message);
         }
 
-        // ★履歴ロード関数
         function loadChatHistory() {
             const saved = localStorage.getItem('ipo_chat_' + currentUser);
-            if (saved) {
-                chatHistory = JSON.parse(saved);
-                renderChat();
-            }
+            if (saved) { chatHistory = JSON.parse(saved); renderChat(); }
         }
-
         function renderChat() {
             const container = document.getElementById('ai-chat-container');
-            const initial = document.getElementById('ai-advice-initial');
-            // AI初期メッセージ以外のバブルを削除して再描画
             const existingBubbles = container.querySelectorAll('div:not(#ai-advice-initial)');
             existingBubbles.forEach(b => b.remove());
-
             chatHistory.forEach(msg => {
                 const div = document.createElement('div');
                 div.className = msg.role === 'user' ? 'user-chat-bubble' : 'ai-chat-bubble';
@@ -288,6 +291,7 @@
         }
 
         function showHub() {
+            stopAutoRefresh(); // Hubでは停止
             document.getElementById('screen-hub').classList.remove('hidden');
             document.getElementById('screen-home').classList.add('hidden');
             document.getElementById('screen-watcher-detail').classList.add('hidden');
@@ -310,119 +314,158 @@
                 document.getElementById('watcher-class-code').innerText = "Code: " + id;
                 loadWatcherHistory('2m', null);
             }
+            startAutoRefresh(); // 自動更新開始
         }
         function backToHub() {
+            stopAutoRefresh();
             document.getElementById('screen-home').classList.add('hidden');
             document.getElementById('screen-watcher-detail').classList.add('hidden');
             document.getElementById('screen-record').classList.add('hidden');
             showHub();
         }
 
+        // ★自動更新（ポーリング）機能
+        function startAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+            autoRefreshInterval = setInterval(() => {
+                if (currentClass) {
+                    if (userType === 'user') loadUserHomeData(null, null); // 範囲引数なし＝最新メッセージ更新目的
+                    else loadWatcherHistory(null, null);
+                }
+            }, 10000); // 10秒毎
+        }
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        }
+
         async function loadUserHomeData(range, btn) {
             if(btn) setActiveTab(btn);
             let logs = cachedUserLogs;
             
-            if (range === '2m' || logs.length === 0) {
+            // 初回またはタブ切替時のみ全量取得、ポーリング時は裏で更新
+            if (range === '2m' || logs.length === 0 || !range) {
                 const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:'2m'}); 
                 if(res.status === 'success') {
                     cachedUserLogs = res.logs;
                     logs = res.logs;
-                    document.getElementById('ai-advice-initial').innerText = res.ai_advice;
-                    const msgArea = document.getElementById('msg-display-area');
-                    if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa;">メッセージなし</div>';
-                    else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
+                    if(range === '2m') document.getElementById('ai-advice-initial').innerText = res.ai_advice; // AIは頻繁に変えない
                     
-                    if(logs.length > 0) {
+                    // チャットエリア更新
+                    updateChatArea('msg-display-area', res.messages);
+
+                    if(logs.length > 0 && range) { // サマリーとグラフは明示的な操作時のみ更新
                         const todayStr = new Date().toDateString();
                         const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
                         const totalTime = todayLogs.reduce((sum, l) => sum + l.duration, 0);
                         const maxSteps = todayLogs.length > 0 ? Math.max(...todayLogs.map(l => l.steps)) : stepCount;
                         document.getElementById('sum-time').innerText = Math.floor(totalTime/60);
                         document.getElementById('sum-steps').innerText = maxSteps;
+                        renderStepChart('user', '1w', logs);
                     }
-                    renderStepChart('user', '1w', logs);
                 }
             }
+            
+            if(range) { // 履歴リストの描画（ポーリング時はチラつくのでスキップ）
+                const cutoff = new Date();
+                if(range==='1d') cutoff.setHours(0,0,0,0);
+                else if(range==='1w') cutoff.setDate(cutoff.getDate()-7);
+                else if(range==='1m') cutoff.setDate(cutoff.getDate()-30);
+                else cutoff.setDate(cutoff.getDate()-60);
 
-            const cutoff = new Date();
-            if(range==='1d') cutoff.setHours(0,0,0,0);
-            else if(range==='1w') cutoff.setDate(cutoff.getDate()-7);
-            else if(range==='1m') cutoff.setDate(cutoff.getDate()-30);
-            else cutoff.setDate(cutoff.getDate()-60);
-
-            const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
-            const container = document.getElementById('user-history-list');
-            if(displayLogs.length === 0) container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">履歴なし</div>';
-            else {
-                container.innerHTML = displayLogs.map(l => {
-                    let bgClass = 'bg-other'; if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house';
-                    let rpeColor = '#4CAF50'; if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800';
-                    return `<div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};"><div class="log-left"><span class="log-badge ${bgClass}">${l.memo}</span><span class="log-date">${new Date(l.date).toLocaleString()}</span></div><div class="log-right"><div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div><div style="font-size:12px; color:#888;">${l.steps}歩</div></div></div>`;
-                }).reverse().join('');
+                const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
+                const container = document.getElementById('user-history-list');
+                if(displayLogs.length === 0) container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">履歴なし</div>';
+                else {
+                    container.innerHTML = displayLogs.map(l => {
+                        let bgClass = 'bg-other'; if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house';
+                        let rpeColor = '#4CAF50'; if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800';
+                        return `<div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};"><div class="log-left"><span class="log-badge ${bgClass}">${l.memo}</span><span class="log-date">${new Date(l.date).toLocaleString()}</span></div><div class="log-right"><div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div><div style="font-size:12px; color:#888;">${l.steps}歩</div></div></div>`;
+                    }).reverse().join('');
+                }
             }
         }
 
         async function loadWatcherHistory(range, btn) {
             if(btn) setActiveTab(btn);
-            if (Object.keys(cachedWatcherLogs).length === 0) {
+            if (Object.keys(cachedWatcherLogs).length === 0 || !range) {
                 const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:'2m'});
                 if(res.status === 'success') {
                     cachedWatcherLogs = res.logs;
-                    document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
-                    if(res.members.length > 0) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
-                    const msgArea = document.getElementById('watcher-msg-display-area');
-                    if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>';
-                    else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
+                    if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
+                    if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
+                    
+                    updateChatArea('watcher-msg-display-area', res.messages);
                 }
             }
-            const container = document.getElementById('watcher-member-list'); container.innerHTML = "";
-            const cutoff = new Date();
-            if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
-            for (const [member, logs] of Object.entries(cachedWatcherLogs)) {
-                const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
-                const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
-                container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${member}</div>${logHtml}</div>`;
+            if(range) {
+                const container = document.getElementById('watcher-member-list'); container.innerHTML = "";
+                const cutoff = new Date();
+                if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
+                for (const [member, logs] of Object.entries(cachedWatcherLogs)) {
+                    const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
+                    const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
+                    container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${member}</div>${logHtml}</div>`;
+                }
             }
         }
 
-        function updateStepChart(mode, range, btn) {
-            if(btn) setActiveTab(btn);
-            if(mode === 'user') renderStepChart('user', range, cachedUserLogs);
-            else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); }
-        }
-
-        function renderStepChart(mode, range, logs, memberName) {
-            const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d');
-            if(mode === 'user' && userChart) userChart.destroy();
-            if(mode === 'watcher' && watcherChart) watcherChart.destroy();
-            const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60);
-            for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; }
-            logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; });
-            const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } };
-            if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config);
-        }
-
-        // ★AI送信 & 保存
-        async function sendToAi() {
-            const input = document.getElementById('ai-chat-input');
-            const msg = input.value;
-            chatHistory.push({role: 'user', text: msg}); // Save User
-            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
-            renderChat();
+        // チャットUI更新関数
+        function updateChatArea(elementId, messages) {
+            const msgArea = document.getElementById(elementId);
+            if(messages.length===0) { msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>'; return; }
             
-            input.value = "";
+            // スクロール位置を保持したいが、シンプルに再描画
+            const html = messages.map(m => {
+                const isMe = m.from === currentUser;
+                return `
+                <div style="display:flex; flex-direction:column; width:100%;">
+                    <div class="chat-bubble ${isMe ? 'chat-right' : 'chat-left'}">
+                        <div class="chat-meta">${isMe ? 'あなた' : m.from}</div>
+                        ${m.content}
+                    </div>
+                </div>`;
+            }).join('');
             
-            const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg});
-            chatHistory.push({role: 'ai', text: res.reply || "エラー"}); // Save AI
-            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
-            renderChat();
+            if(msgArea.innerHTML !== html) { // 差分があるときだけ更新（チラつき防止）
+                msgArea.innerHTML = html;
+                msgArea.scrollTop = msgArea.scrollHeight;
+            }
         }
 
+        // ★メッセージ送信（即時反映）
+        async function sendMessage(mode) {
+            const inputId = mode === 'user' ? 'user-msg-input' : 'watcher-msg-input';
+            const areaId = mode === 'user' ? 'msg-display-area' : 'watcher-msg-display-area';
+            const txt = document.getElementById(inputId).value;
+            if(!txt) return;
+
+            // 即時反映 (Optimistic UI)
+            const area = document.getElementById(areaId);
+            area.innerHTML += `
+            <div style="display:flex; flex-direction:column; width:100%;">
+                <div class="chat-bubble chat-right" style="opacity:0.7;">
+                    <div class="chat-meta">送信中...</div>
+                    ${txt}
+                </div>
+            </div>`;
+            area.scrollTop = area.scrollHeight;
+            document.getElementById(inputId).value = '';
+
+            await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
+            
+            // 送信完了後にリロードして正式表示
+            if(mode === 'user') loadUserHomeData(null, null); 
+            else loadWatcherHistory(null, null);
+        }
+
+        // その他（AI, グラフ, 歩数計など変更なし）
+        function updateStepChart(mode, range, btn) { if(btn) setActiveTab(btn); if(mode === 'user') renderStepChart('user', range, cachedUserLogs); else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); } }
+        function renderStepChart(mode, range, logs, memberName) { const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d'); if(mode === 'user' && userChart) userChart.destroy(); if(mode === 'watcher' && watcherChart) watcherChart.destroy(); const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60); for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; } logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; }); const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } }; if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config); }
+        async function sendToAi() { const input = document.getElementById('ai-chat-input'); const msg = input.value; chatHistory.push({role: 'user', text: msg}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); input.value = ""; const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg}); chatHistory.push({role: 'ai', text: res.reply || "エラー"}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); }
         function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
         async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
         async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
         async function submitLog(){ let t=document.getElementById('act-type').value; if(t==='その他') t=document.getElementById('act-other-input').value; const tm=document.getElementById('timer-val').innerText.split(':'); const sec=parseInt(tm[1])*60+parseInt(tm[2]); if(selectedRpeValue===0) return alert("選択してください"); await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:sec, rpe:selectedRpeValue, memo:t, steps:stepCount}); alert("記録完了"); goHome(); loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); }
-        async function sendMessage() { const txt = document.getElementById('watcher-msg-input').value; await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt}); document.getElementById('watcher-msg-input').value=''; alert("送信しました"); loadWatcherHistory('1d'); }
         function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
         function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); }
         function checkActivityType(){ document.getElementById('act-other-input').classList.toggle('hidden', document.getElementById('act-type').value!=='その他'); }
@@ -430,7 +473,6 @@
         function selectRpe(v,b){ selectedRpeValue=v; document.querySelectorAll('.rpe-btn').forEach(bb=>bb.classList.remove('selected')); b.classList.add('selected'); }
         async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
         function logout(){ location.reload(); }
-        
         function enableSensors() { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') { DeviceMotionEvent.requestPermission().then(r => { if (r === 'granted') { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }).catch(console.error); } else { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }
         function startStepCounting() { window.addEventListener('devicemotion', (e)=>{ const a=e.accelerationIncludingGravity; if(!a)return; if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ stepCount++; window.lt=Date.now(); localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); }}); }
         const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
