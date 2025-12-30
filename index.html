@@ -49,7 +49,7 @@
         .ai-chat-bubble { background: #F3E5F5; padding: 15px; border-radius: 15px; border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
         .user-chat-bubble { background: #E3F2FD; padding: 10px 15px; border-radius: 15px; border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; text-align: right; align-self: flex-end; margin-left: auto; width: fit-content; }
         
-        /* AI入力欄のレイアウト修正 (大きく・ボタン右) */
+        /* AI入力欄のレイアウト */
         .ai-input-area, .chat-input-area { display: flex; align-items: center; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; width: 100%; flex-wrap: nowrap; }
         .ai-input, .chat-input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; background: #fafafa; font-size: 16px; }
         .btn-send-icon, .btn-ai-send { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -349,7 +349,7 @@
                     logs = res.logs;
                     if(range === '2m') document.getElementById('ai-advice-initial').innerText = res.ai_advice;
                     
-                    updateChatArea('msg-display-area', res.messages); // ★更新
+                    updateChatArea('msg-display-area', res.messages);
 
                     if(logs.length > 0 && range) {
                         const todayStr = new Date().toDateString();
@@ -361,7 +361,6 @@
                         renderStepChart('user', '1w', logs);
                     }
                     
-                    // 既読処理
                     if(res.messages.length > 0) {
                         const lastMsg = res.messages[res.messages.length-1];
                         if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
@@ -396,9 +395,8 @@
                     if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
                     if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
                     
-                    updateChatArea('watcher-msg-display-area', res.messages); // ★更新
+                    updateChatArea('watcher-msg-display-area', res.messages);
                     
-                    // 既読処理
                     if(res.messages.length > 0) {
                         const lastMsg = res.messages[res.messages.length-1];
                         if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
@@ -413,13 +411,12 @@
                 if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
                 for (const [member, logs] of Object.entries(cachedWatcherLogs)) {
                     const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
-                    const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
+                    const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / <span style="font-weight:bold; color:#FF9800;">RPE${l.rpe}</span> / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
                     container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${member}</div>${logHtml}</div>`;
                 }
             }
         }
 
-        // ★チャットUI更新
         function updateChatArea(elementId, messages) {
             const msgArea = document.getElementById(elementId);
             if(messages.length===0) { msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>'; return; }
@@ -436,24 +433,20 @@
                 </div>`;
             }).join('');
             
-            // 差分更新チェックは簡易的に行う（HTML長比較）
             if(msgArea.innerHTML.length !== html.length) {
                 msgArea.innerHTML = html;
                 msgArea.scrollTop = msgArea.scrollHeight;
             }
         }
 
-        // ★メッセージ送信（Optimistic UI）
         async function sendMessage(mode) {
             const inputId = mode === 'user' ? 'user-msg-input' : 'watcher-msg-input';
             const areaId = mode === 'user' ? 'msg-display-area' : 'watcher-msg-display-area';
             const txt = document.getElementById(inputId).value;
             if(!txt) return;
 
-            // ★修正: 送信中はポーリングを止める（チラつき防止）
             stopAutoRefresh();
 
-            // 即時反映
             const area = document.getElementById(areaId);
             area.innerHTML += `
             <div style="display:flex; flex-direction:column; width:100%;">
@@ -467,29 +460,24 @@
 
             await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
             
-            // 完了後に再取得してポーリング再開
             if(mode === 'user') await loadUserHomeData(null, null); 
             else await loadWatcherHistory(null, null);
             startAutoRefresh();
         }
 
-        // ★修正: AI送信 (履歴送信)
         async function sendToAi() {
             const input = document.getElementById('ai-chat-input');
             const msg = input.value;
-            // 履歴に追加
             chatHistory.push({role: 'user', text: msg});
             localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
             renderChat();
             
             input.value = "";
             
-            // 直近の履歴を送る
             const recentHistory = chatHistory.slice(-6);
             
             const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: recentHistory});
             
-            // 返答を履歴に追加
             chatHistory.push({role: 'ai', text: res.reply || "エラー"});
             localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
             renderChat();
