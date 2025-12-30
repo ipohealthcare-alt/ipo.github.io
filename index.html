@@ -240,13 +240,14 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzkhGozKC04hroXIZaHlvwkqGWN3MKWDp-xWD5fgp8i1w3w5SCzAr3ferKAPL-cMxjH/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxGyIk3N6Op0C4A18NX3_q3K_I9kRP8AocKHQM90vKT1B2MG5TdqDVcaU25d4kupwjz/exec";
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
         let userChart=null, watcherChart=null;
         let cachedUserLogs = [];
         let cachedWatcherLogs = {};
+        let chatHistory = [];
 
         async function auth(mode) {
             const u = document.getElementById('auth-user').value;
@@ -257,7 +258,33 @@
                 currentUser = u; userType = t; myClasses = res.classes || [];
                 document.getElementById('screen-auth').classList.add('hidden');
                 showHub();
+                loadChatHistory(); // ★履歴ロード
             } else alert(res.message);
+        }
+
+        // ★履歴ロード関数
+        function loadChatHistory() {
+            const saved = localStorage.getItem('ipo_chat_' + currentUser);
+            if (saved) {
+                chatHistory = JSON.parse(saved);
+                renderChat();
+            }
+        }
+
+        function renderChat() {
+            const container = document.getElementById('ai-chat-container');
+            const initial = document.getElementById('ai-advice-initial');
+            // AI初期メッセージ以外のバブルを削除して再描画
+            const existingBubbles = container.querySelectorAll('div:not(#ai-advice-initial)');
+            existingBubbles.forEach(b => b.remove());
+
+            chatHistory.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = msg.role === 'user' ? 'user-chat-bubble' : 'ai-chat-bubble';
+                div.innerText = msg.text;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
         }
 
         function showHub() {
@@ -276,7 +303,7 @@
             if(userType === 'user') {
                 document.getElementById('screen-home').classList.remove('hidden');
                 document.getElementById('display-user-code').innerText = id;
-                loadUserHomeData('2m', null); // グラフ用に長めに取得
+                loadUserHomeData('2m', null); 
             } else {
                 document.getElementById('screen-watcher-detail').classList.remove('hidden');
                 document.getElementById('watcher-class-title').innerText = name;
@@ -293,40 +320,30 @@
 
         async function loadUserHomeData(range, btn) {
             if(btn) setActiveTab(btn);
-            
-            // 初回ロード時は2ヶ月分とってキャッシュ、タブ切り替えはキャッシュから表示が理想だが
-            // ここでは簡易的に都度fetchまたはキャッシュ利用を判断
             let logs = cachedUserLogs;
             
             if (range === '2m' || logs.length === 0) {
-                const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:'2m'}); // 常に最大取得
+                const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:'2m'}); 
                 if(res.status === 'success') {
                     cachedUserLogs = res.logs;
                     logs = res.logs;
-                    // メッセージとAIは初回更新
                     document.getElementById('ai-advice-initial').innerText = res.ai_advice;
                     const msgArea = document.getElementById('msg-display-area');
                     if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa;">メッセージなし</div>';
                     else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
                     
-                    // サマリー計算 (直近のログから)
                     if(logs.length > 0) {
-                        // 今日
                         const todayStr = new Date().toDateString();
                         const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
                         const totalTime = todayLogs.reduce((sum, l) => sum + l.duration, 0);
                         const maxSteps = todayLogs.length > 0 ? Math.max(...todayLogs.map(l => l.steps)) : stepCount;
-                        
                         document.getElementById('sum-time').innerText = Math.floor(totalTime/60);
                         document.getElementById('sum-steps').innerText = maxSteps;
                     }
-                    
-                    // 初回グラフ描画
                     renderStepChart('user', '1w', logs);
                 }
             }
 
-            // 履歴リストの表示 (選択範囲でフィルタ)
             const cutoff = new Date();
             if(range==='1d') cutoff.setHours(0,0,0,0);
             else if(range==='1w') cutoff.setDate(cutoff.getDate()-7);
@@ -335,12 +352,10 @@
 
             const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
             const container = document.getElementById('user-history-list');
-            
             if(displayLogs.length === 0) container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">履歴なし</div>';
             else {
                 container.innerHTML = displayLogs.map(l => {
-                    let bgClass = 'bg-other';
-                    if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house';
+                    let bgClass = 'bg-other'; if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house';
                     let rpeColor = '#4CAF50'; if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800';
                     return `<div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};"><div class="log-left"><span class="log-badge ${bgClass}">${l.memo}</span><span class="log-date">${new Date(l.date).toLocaleString()}</span></div><div class="log-right"><div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div><div style="font-size:12px; color:#888;">${l.steps}歩</div></div></div>`;
                 }).reverse().join('');
@@ -349,30 +364,20 @@
 
         async function loadWatcherHistory(range, btn) {
             if(btn) setActiveTab(btn);
-            
             if (Object.keys(cachedWatcherLogs).length === 0) {
                 const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:'2m'});
                 if(res.status === 'success') {
                     cachedWatcherLogs = res.logs;
                     document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
-                    // 初回グラフ (最初のメンバー)
                     if(res.members.length > 0) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
-                    
                     const msgArea = document.getElementById('watcher-msg-display-area');
                     if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>';
                     else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
                 }
             }
-
-            // 履歴リスト表示
-            const container = document.getElementById('watcher-member-list');
-            container.innerHTML = "";
+            const container = document.getElementById('watcher-member-list'); container.innerHTML = "";
             const cutoff = new Date();
-            if(range==='1d') cutoff.setHours(0,0,0,0);
-            else if(range==='1w') cutoff.setDate(cutoff.getDate()-7);
-            else if(range==='1m') cutoff.setDate(cutoff.getDate()-30);
-            else cutoff.setDate(cutoff.getDate()-60);
-
+            if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
             for (const [member, logs] of Object.entries(cachedWatcherLogs)) {
                 const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
                 const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
@@ -380,77 +385,37 @@
             }
         }
 
-        // ★歩数グラフ描画ロジック
         function updateStepChart(mode, range, btn) {
             if(btn) setActiveTab(btn);
-            if(mode === 'user') {
-                renderStepChart('user', range, cachedUserLogs);
-            } else {
-                // 見守り側は最初のメンバーのデータを出す（簡易実装）
-                const members = Object.keys(cachedWatcherLogs);
-                if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]);
-            }
+            if(mode === 'user') renderStepChart('user', range, cachedUserLogs);
+            else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); }
         }
 
         function renderStepChart(mode, range, logs, memberName) {
             const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d');
             if(mode === 'user' && userChart) userChart.destroy();
             if(mode === 'watcher' && watcherChart) watcherChart.destroy();
-
-            // データを日別に集計 (Maxをとる)
-            const daysMap = {};
-            const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60);
-            
-            // 過去N日分の日付キーを作る
-            for(let i=daysCount-1; i>=0; i--) {
-                const d = new Date(); d.setDate(d.getDate() - i);
-                daysMap[d.toLocaleDateString()] = 0;
-            }
-
-            logs.forEach(l => {
-                const dStr = new Date(l.date).toLocaleDateString();
-                if(daysMap.hasOwnProperty(dStr)) {
-                    // その日の最大歩数を採用
-                    if(l.steps > daysMap[dStr]) daysMap[dStr] = l.steps;
-                }
-            });
-
-            const labels = Object.keys(daysMap).map(d => d.slice(5)); // MM/DD
-            const data = Object.values(daysMap);
-
-            const config = {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: (memberName ? memberName + 'の' : '') + '歩数',
-                        data: data,
-                        borderColor: '#FF9800',
-                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: true } } }
-            };
-
-            if(mode === 'user') userChart = new Chart(ctx, config);
-            else watcherChart = new Chart(ctx, config);
+            const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60);
+            for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; }
+            logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; });
+            const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } };
+            if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config);
         }
 
-        // その他機能
+        // ★AI送信 & 保存
         async function sendToAi() {
             const input = document.getElementById('ai-chat-input');
             const msg = input.value;
-            const container = document.getElementById('ai-chat-container');
-            container.innerHTML += `<div class="user-chat-bubble">${msg || "評価をお願いします"}</div>`;
+            chatHistory.push({role: 'user', text: msg}); // Save User
+            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
+            renderChat();
+            
             input.value = "";
-            container.innerHTML += `<div class="ai-chat-bubble">...</div>`;
-            container.scrollTop = container.scrollHeight;
+            
             const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg});
-            container.lastChild.remove();
-            container.innerHTML += `<div class="ai-chat-bubble">${res.reply || "エラー"}</div>`;
-            container.scrollTop = container.scrollHeight;
+            chatHistory.push({role: 'ai', text: res.reply || "エラー"}); // Save AI
+            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
+            renderChat();
         }
 
         function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
@@ -466,32 +431,8 @@
         async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
         function logout(){ location.reload(); }
         
-        // 歩数計許可 & 処理
-        function enableSensors() {
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                DeviceMotionEvent.requestPermission().then(response => {
-                    if (response === 'granted') {
-                        startStepCounting();
-                        document.getElementById('step-switch-area').style.display='none';
-                        alert("計測を開始します");
-                    }
-                }).catch(console.error);
-            } else {
-                startStepCounting();
-                document.getElementById('step-switch-area').style.display='none';
-                alert("計測を開始します");
-            }
-        }
-        function startStepCounting() {
-            window.addEventListener('devicemotion', (e)=>{ 
-                const a=e.accelerationIncludingGravity; if(!a)return; 
-                if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ 
-                    stepCount++; window.lt=Date.now(); 
-                    localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); 
-                    if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); 
-                }
-            });
-        }
+        function enableSensors() { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') { DeviceMotionEvent.requestPermission().then(r => { if (r === 'granted') { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }).catch(console.error); } else { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }
+        function startStepCounting() { window.addEventListener('devicemotion', (e)=>{ const a=e.accelerationIncludingGravity; if(!a)return; if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ stepCount++; window.lt=Date.now(); localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); }}); }
         const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
     </script>
 </body>
