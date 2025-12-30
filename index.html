@@ -75,6 +75,12 @@
         .rpe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
         .rpe-btn { background: #E0E0E0; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #555; }
         .rpe-btn.selected { background: var(--primary-blue); color: white; }
+
+        /* ★歩数計スイッチ用 */
+        .step-switch-btn {
+            background: #e0e0e0; border: none; color: #555; font-size: 12px; 
+            padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -129,13 +135,19 @@
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">今日の活動概要</div>
         <div class="card">
             <div class="summary-row">
-                <div><span class="material-icons-round" style="color:#FB8C00; vertical-align:middle;">local_fire_department</span> 総活動時間</div>
+                <div>
+                    <span class="material-icons-round" style="color:#FB8C00; vertical-align:middle;">local_fire_department</span> 総活動時間
+                </div>
                 <div style="font-weight:bold; font-size:18px;"><span id="sum-time">0</span>分</div>
             </div>
             <div class="summary-row">
-                <div><span class="material-icons-round" style="color:#2979FF; vertical-align:middle;">directions_run</span> 歩数</div>
+                <div>
+                    <span class="material-icons-round" style="color:#2979FF; vertical-align:middle;">directions_run</span> 歩数
+                    <button id="btn-enable-steps" class="step-switch-btn" onclick="enableSensors()">計測ON</button>
+                </div>
                 <div style="font-weight:bold; font-size:18px;"><span id="sum-steps">0</span>歩</div>
             </div>
+            <div style="font-size:10px; color:#aaa; margin-top:5px; text-align:right;">※「計測ON」を押して許可してください</div>
         </div>
 
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">健康AIアシスタント (チャット)</div>
@@ -240,7 +252,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby6nXkAwkCm2y9Gbz5OcnnAFE-RzkzU_orO8ZcwWovMCQe-rwXgHIxsWew4jFwksoLf/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycby6nXkAwkCm2y9Gbz5OcnnAFE-RzkzU_orO8ZcwWovMCQe-rwXgHIxsWew4jFwksoLf/exec"; // ★GAS URL
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -261,8 +273,8 @@
             document.getElementById('screen-hub').classList.remove('hidden');
             document.getElementById('screen-home').classList.add('hidden');
             document.getElementById('screen-watcher-detail').classList.add('hidden');
-            
             document.getElementById('btn-create-class').classList.toggle('hidden', userType === 'watcher');
+
             const grid = document.getElementById('hub-class-list');
             if(myClasses.length === 0) {
                 grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888;">クラスに参加していません</div>';
@@ -306,7 +318,6 @@
             const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:range});
             
             if(res.status === 'success') {
-                // AI初期メッセージ
                 document.getElementById('ai-advice-initial').innerText = res.ai_advice;
                 
                 const msgArea = document.getElementById('msg-display-area');
@@ -348,34 +359,16 @@
             }
         }
 
-        // ★ AIチャット送信機能
         async function sendToAi() {
             const input = document.getElementById('ai-chat-input');
             const msg = input.value;
             const container = document.getElementById('ai-chat-container');
-            
-            // ユーザーのメッセージを表示
-            const userBubble = document.createElement('div');
-            userBubble.className = 'user-chat-bubble';
-            userBubble.innerText = msg || "評価をお願いします";
-            container.appendChild(userBubble);
+            const userBubble = document.createElement('div'); userBubble.className = 'user-chat-bubble'; userBubble.innerText = msg || "評価をお願いします"; container.appendChild(userBubble);
             input.value = "";
-            
-            // 読み込み中表示
-            const loadingBubble = document.createElement('div');
-            loadingBubble.className = 'ai-chat-bubble';
-            loadingBubble.innerText = "...";
-            container.appendChild(loadingBubble);
-            container.scrollTop = container.scrollHeight;
-
+            const loadingBubble = document.createElement('div'); loadingBubble.className = 'ai-chat-bubble'; loadingBubble.innerText = "..."; container.appendChild(loadingBubble); container.scrollTop = container.scrollHeight;
             const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg});
-            
             loadingBubble.remove();
-            const aiBubble = document.createElement('div');
-            aiBubble.className = 'ai-chat-bubble';
-            aiBubble.innerText = res.reply || "エラーが発生しました";
-            container.appendChild(aiBubble);
-            container.scrollTop = container.scrollHeight;
+            const aiBubble = document.createElement('div'); aiBubble.className = 'ai-chat-bubble'; aiBubble.innerText = res.reply || "エラーが発生しました"; container.appendChild(aiBubble); container.scrollTop = container.scrollHeight;
         }
 
         async function loadWatcherHistory(range, btn) {
@@ -383,17 +376,13 @@
             const container = document.getElementById('watcher-member-list');
             container.innerHTML = '<div style="text-align:center; padding:10px;">取得中...</div>';
             const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:range});
-            
             if(res.status === 'success') {
                 document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
                 container.innerHTML = "";
                 res.members.forEach(m => {
                     const logs = res.logs[m] || [];
                     const logHtml = logs.length ? logs.map(l => 
-                        `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;">
-                            <span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span>
-                            <span>${Math.floor(l.duration/60)}分 / RPE${l.rpe}</span>
-                         </div>`
+                        `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / RPE${l.rpe}</span></div>`
                     ).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
                     container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${m}</div>${logHtml}</div>`;
                 });
@@ -416,7 +405,35 @@
         function selectRpe(v,b){ selectedRpeValue=v; document.querySelectorAll('.rpe-btn').forEach(bb=>bb.classList.remove('selected')); b.classList.add('selected'); }
         async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
         function logout(){ location.reload(); }
-        const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s); window.addEventListener('devicemotion', (e)=>{ const a=e.accelerationIncludingGravity; if(!a)return; if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ stepCount++; window.lt=Date.now(); localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); }});
+        
+        // ★歩数計許可 & 処理
+        function enableSensors() {
+            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                DeviceMotionEvent.requestPermission().then(response => {
+                    if (response === 'granted') {
+                        startStepCounting();
+                        document.getElementById('btn-enable-steps').style.display='none';
+                        alert("計測を開始します");
+                    }
+                }).catch(console.error);
+            } else {
+                startStepCounting();
+                document.getElementById('btn-enable-steps').style.display='none';
+                alert("計測を開始します");
+            }
+        }
+        function startStepCounting() {
+            window.addEventListener('devicemotion', (e)=>{ 
+                const a=e.accelerationIncludingGravity; if(!a)return; 
+                if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ 
+                    stepCount++; window.lt=Date.now(); 
+                    localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); 
+                    if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); 
+                }
+            });
+        }
+        // 既に許可済みなら自動開始（簡易チェック）
+        const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
     </script>
 </body>
 </html>
