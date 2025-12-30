@@ -44,37 +44,15 @@
         .chat-left { align-self: flex-start; background: #F5F5F5; border-bottom-left-radius: 0; color: #333; }
         .chat-right { align-self: flex-end; background: #E3F2FD; border-bottom-right-radius: 0; color: #0D47A1; }
         .chat-meta { font-size: 10px; color: #999; margin-bottom: 2px; }
-        .read-status { font-size: 10px; color: #888; text-align: right; margin-top: -5px; margin-bottom: 5px; margin-right: 5px; } /* 既読マーク */
+        .read-status { font-size: 10px; color: #888; text-align: right; margin-top: -5px; margin-bottom: 5px; margin-right: 5px; }
         
         .ai-chat-bubble { background: #F3E5F5; padding: 15px; border-radius: 15px; border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
         .user-chat-bubble { background: #E3F2FD; padding: 10px 15px; border-radius: 15px; border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; text-align: right; align-self: flex-end; margin-left: auto; width: fit-content; }
         
-        /* ★修正: AI入力欄のレイアウト */
-        .ai-input-area, .chat-input-area { 
-            display: flex; 
-            align-items: center; /* 垂直中央揃え */
-            gap: 8px; 
-            margin-top: 10px; 
-            border-top: 1px solid #eee; 
-            padding-top: 10px; 
-            width: 100%; /* 横幅いっぱい */
-            flex-wrap: nowrap; /* 折り返し禁止 */
-        }
-        .ai-input, .chat-input { 
-            flex-grow: 1; /* 残りの幅を全て使う */
-            padding: 12px; /* 少し大きく */
-            border: 1px solid #ccc; 
-            border-radius: 20px; 
-            outline: none; 
-            background: #fafafa;
-            font-size: 16px; /* 文字サイズ調整 */
-        }
-        .btn-send-icon, .btn-ai-send { 
-            flex-shrink: 0; /* 縮小禁止 */
-            width: 44px; height: 44px; 
-            border: none; border-radius: 50%; 
-            cursor: pointer; display: flex; align-items: center; justify-content: center; 
-        }
+        /* AI入力欄のレイアウト修正 (大きく・ボタン右) */
+        .ai-input-area, .chat-input-area { display: flex; align-items: center; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; width: 100%; flex-wrap: nowrap; }
+        .ai-input, .chat-input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; background: #fafafa; font-size: 16px; }
+        .btn-send-icon, .btn-ai-send { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .btn-send-icon { background: var(--primary-blue); color: white; }
         .btn-ai-send { background: var(--accent-purple); color: white; }
 
@@ -275,7 +253,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbz63u-fxAfMkPeS_nErfaRdJFlifbPPc7Zvole61Btbd9G8-G8k3y2KAEOsbPMrdUdZ/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxM5EsKIXaMvTkbiK_4Jk8YiakKW3dXsOKlNnV_2IXEAdX9xHihDIclYcxYUVX_41Hv/exec";
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -472,6 +450,9 @@
             const txt = document.getElementById(inputId).value;
             if(!txt) return;
 
+            // ★修正: 送信中はポーリングを止める（チラつき防止）
+            stopAutoRefresh();
+
             // 即時反映
             const area = document.getElementById(areaId);
             area.innerHTML += `
@@ -486,13 +467,36 @@
 
             await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
             
-            if(mode === 'user') loadUserHomeData(null, null); 
-            else loadWatcherHistory(null, null);
+            // 完了後に再取得してポーリング再開
+            if(mode === 'user') await loadUserHomeData(null, null); 
+            else await loadWatcherHistory(null, null);
+            startAutoRefresh();
+        }
+
+        // ★修正: AI送信 (履歴送信)
+        async function sendToAi() {
+            const input = document.getElementById('ai-chat-input');
+            const msg = input.value;
+            // 履歴に追加
+            chatHistory.push({role: 'user', text: msg});
+            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
+            renderChat();
+            
+            input.value = "";
+            
+            // 直近の履歴を送る
+            const recentHistory = chatHistory.slice(-6);
+            
+            const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: recentHistory});
+            
+            // 返答を履歴に追加
+            chatHistory.push({role: 'ai', text: res.reply || "エラー"});
+            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
+            renderChat();
         }
 
         function updateStepChart(mode, range, btn) { if(btn) setActiveTab(btn); if(mode === 'user') renderStepChart('user', range, cachedUserLogs); else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); } }
         function renderStepChart(mode, range, logs, memberName) { const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d'); if(mode === 'user' && userChart) userChart.destroy(); if(mode === 'watcher' && watcherChart) watcherChart.destroy(); const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60); for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; } logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; }); const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } }; if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config); }
-        async function sendToAi() { const input = document.getElementById('ai-chat-input'); const msg = input.value; chatHistory.push({role: 'user', text: msg}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); input.value = ""; const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg}); chatHistory.push({role: 'ai', text: res.reply || "エラー"}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); }
         function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
         async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
         async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
