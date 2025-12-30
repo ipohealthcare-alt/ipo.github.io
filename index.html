@@ -62,6 +62,16 @@
         .ai-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
         .btn-ai-send { background: var(--accent-purple); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
+        /* ★歩数計スイッチ用 (見やすく変更) */
+        .step-switch-container {
+            margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; text-align: center;
+        }
+        .step-switch-btn {
+            background: #2979FF; border: none; color: white; font-size: 14px; 
+            padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 2px 5px rgba(41,121,255,0.3);
+        }
+
         /* ナビゲーション・その他 */
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; z-index: 100; }
         .nav-item { text-align: center; color: #aaa; cursor: pointer; font-size: 10px; display: flex; flex-direction: column; align-items: center; }
@@ -75,12 +85,6 @@
         .rpe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
         .rpe-btn { background: #E0E0E0; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #555; }
         .rpe-btn.selected { background: var(--primary-blue); color: white; }
-
-        /* ★歩数計スイッチ用 */
-        .step-switch-btn {
-            background: #e0e0e0; border: none; color: #555; font-size: 12px; 
-            padding: 5px 10px; border-radius: 15px; cursor: pointer; margin-top: 5px;
-        }
     </style>
 </head>
 <body>
@@ -143,11 +147,13 @@
             <div class="summary-row">
                 <div>
                     <span class="material-icons-round" style="color:#2979FF; vertical-align:middle;">directions_run</span> 歩数
-                    <button id="btn-enable-steps" class="step-switch-btn" onclick="enableSensors()">計測ON</button>
                 </div>
                 <div style="font-weight:bold; font-size:18px;"><span id="sum-steps">0</span>歩</div>
             </div>
-            <div style="font-size:10px; color:#aaa; margin-top:5px; text-align:right;">※「計測ON」を押して許可してください</div>
+            <div id="step-switch-area" class="step-switch-container">
+                <p style="font-size:12px; margin:0 0 5px 0;">歩数をカウントするには押してください</p>
+                <button class="step-switch-btn" onclick="enableSensors()">📡 歩数計センサーをONにする</button>
+            </div>
         </div>
 
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">健康AIアシスタント (チャット)</div>
@@ -252,7 +258,8 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycby6nXkAwkCm2y9Gbz5OcnnAFE-RzkzU_orO8ZcwWovMCQe-rwXgHIxsWew4jFwksoLf/exec"; // ★GAS URL
+        // ★★★ GAS URL ★★★
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbz-CivqKH4xEeoud2Npr4ZtZMpTE7gFVHgsFgSmPimrZiB-OwfCQ70PKjTunJf7J2vk/exec";
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -331,10 +338,8 @@
                         if(l.memo.includes('散歩')) bgClass='bg-walk';
                         else if(l.memo.includes('買い物')) bgClass='bg-shop';
                         else if(l.memo.includes('家事')) bgClass='bg-house';
-                        
                         let rpeColor = '#4CAF50';
-                        if(l.rpe >= 5) rpeColor = '#F44336';
-                        else if(l.rpe >= 3) rpeColor = '#FF9800';
+                        if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800';
 
                         return `
                         <div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};">
@@ -412,13 +417,13 @@
                 DeviceMotionEvent.requestPermission().then(response => {
                     if (response === 'granted') {
                         startStepCounting();
-                        document.getElementById('btn-enable-steps').style.display='none';
+                        document.getElementById('step-switch-area').style.display='none';
                         alert("計測を開始します");
                     }
                 }).catch(console.error);
             } else {
                 startStepCounting();
-                document.getElementById('btn-enable-steps').style.display='none';
+                document.getElementById('step-switch-area').style.display='none';
                 alert("計測を開始します");
             }
         }
@@ -432,7 +437,6 @@
                 }
             });
         }
-        // 既に許可済みなら自動開始（簡易チェック）
         const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
     </script>
 </body>
