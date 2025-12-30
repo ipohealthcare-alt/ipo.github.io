@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
-    <link rel="icon" type="image/png" href="apple-touch-icon.png">
-    <title>i-Po</title>
-    <link rel="icon" href="fapple-touch-icon.ico">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>i-Po</title>
@@ -51,6 +47,20 @@
         .bg-walk { background: #4DB6AC; } .bg-shop { background: #FF8A65; } .bg-house { background: #9575CD; } .bg-other { background: #90A4AE; }
         .log-date { font-size: 12px; color: #888; }
         .log-right { text-align: right; font-size: 14px; font-weight: bold; color: #555; }
+
+        /* AIチャット用スタイル */
+        .ai-chat-bubble {
+            background: #F3E5F5; padding: 15px; border-radius: 15px; 
+            border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6;
+        }
+        .user-chat-bubble {
+            background: #E3F2FD; padding: 10px 15px; border-radius: 15px; 
+            border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; 
+            text-align: right; align-self: flex-end; margin-left: auto; width: fit-content;
+        }
+        .ai-input-area { display: flex; gap: 8px; margin-top: 10px; }
+        .ai-input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        .btn-ai-send { background: var(--accent-purple); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
         /* ナビゲーション・その他 */
         .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.95); display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #eee; z-index: 100; }
@@ -128,13 +138,23 @@
             </div>
         </div>
 
-        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">アプリからのアドバイス</div>
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">健康AIアシスタント (チャット)</div>
         <div class="card">
             <div class="ai-header">
                 <span class="material-icons-round icon-brain">psychology</span>
-                <span style="font-weight:bold;">健康AIアシスタント</span>
+                <span style="font-weight:bold;">i-Po アシスタント</span>
             </div>
-            <div id="ai-advice-text" style="font-size:15px; line-height:1.6;">読み込み中...</div>
+            
+            <div id="ai-chat-container" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column;">
+                <div class="ai-chat-bubble" id="ai-advice-initial">読み込み中...</div>
+            </div>
+
+            <div class="ai-input-area">
+                <input type="text" id="ai-chat-input" class="ai-input" placeholder="相談や今の状態を入力...">
+                <button onclick="sendToAi()" class="btn-ai-send">
+                    <span class="material-icons-round">send</span>
+                </button>
+            </div>
         </div>
 
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">活動履歴</div>
@@ -220,7 +240,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxpLjNrBrGfq4cQanL36wnALgmUgn_InNOEISAWvUSE48Pdj4VIYXuJ4KynYZwVIlNE/exec"; // ★GAS URL設定
+        const GAS_URL = "https://script.google.com/macros/s/AKfycby6nXkAwkCm2y9Gbz5OcnnAFE-RzkzU_orO8ZcwWovMCQe-rwXgHIxsWew4jFwksoLf/exec";
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -242,9 +262,7 @@
             document.getElementById('screen-home').classList.add('hidden');
             document.getElementById('screen-watcher-detail').classList.add('hidden');
             
-            // ★ 見守りモードなら作成ボタンを隠す
             document.getElementById('btn-create-class').classList.toggle('hidden', userType === 'watcher');
-
             const grid = document.getElementById('hub-class-list');
             if(myClasses.length === 0) {
                 grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888;">クラスに参加していません</div>';
@@ -264,7 +282,7 @@
             document.getElementById('screen-hub').classList.add('hidden');
             if(userType === 'user') {
                 document.getElementById('screen-home').classList.remove('hidden');
-                document.getElementById('display-user-code').innerText = id; // ★クラスコード表示
+                document.getElementById('display-user-code').innerText = id;
                 loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); 
             } else {
                 document.getElementById('screen-watcher-detail').classList.remove('hidden');
@@ -288,7 +306,8 @@
             const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:range});
             
             if(res.status === 'success') {
-                document.getElementById('ai-advice-text').innerText = res.ai_advice;
+                // AI初期メッセージ
+                document.getElementById('ai-advice-initial').innerText = res.ai_advice;
                 
                 const msgArea = document.getElementById('msg-display-area');
                 if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa;">メッセージなし</div>';
@@ -329,6 +348,36 @@
             }
         }
 
+        // ★ AIチャット送信機能
+        async function sendToAi() {
+            const input = document.getElementById('ai-chat-input');
+            const msg = input.value;
+            const container = document.getElementById('ai-chat-container');
+            
+            // ユーザーのメッセージを表示
+            const userBubble = document.createElement('div');
+            userBubble.className = 'user-chat-bubble';
+            userBubble.innerText = msg || "評価をお願いします";
+            container.appendChild(userBubble);
+            input.value = "";
+            
+            // 読み込み中表示
+            const loadingBubble = document.createElement('div');
+            loadingBubble.className = 'ai-chat-bubble';
+            loadingBubble.innerText = "...";
+            container.appendChild(loadingBubble);
+            container.scrollTop = container.scrollHeight;
+
+            const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg});
+            
+            loadingBubble.remove();
+            const aiBubble = document.createElement('div');
+            aiBubble.className = 'ai-chat-bubble';
+            aiBubble.innerText = res.reply || "エラーが発生しました";
+            container.appendChild(aiBubble);
+            container.scrollTop = container.scrollHeight;
+        }
+
         async function loadWatcherHistory(range, btn) {
             if(btn) setActiveTab(btn);
             const container = document.getElementById('watcher-member-list');
@@ -349,7 +398,6 @@
                     container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${m}</div>${logHtml}</div>`;
                 });
 
-                // ★メッセージ履歴の表示 (見守りモード)
                 const msgArea = document.getElementById('watcher-msg-display-area');
                 if(res.messages.length===0) msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>';
                 else msgArea.innerHTML = res.messages.map(m=>`<div style="text-align:${m.from===currentUser?'right':'left'}; margin-bottom:5px;"><span style="font-size:10px;color:#888;">${m.from}</span><div style="background:${m.from===currentUser?'#BBDEFB':'#f0f0f0'}; padding:8px; border-radius:10px; display:inline-block;">${m.content}</div></div>`).reverse().join('');
@@ -360,7 +408,7 @@
         async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
         async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
         async function submitLog(){ let t=document.getElementById('act-type').value; if(t==='その他') t=document.getElementById('act-other-input').value; const tm=document.getElementById('timer-val').innerText.split(':'); const sec=parseInt(tm[1])*60+parseInt(tm[2]); if(selectedRpeValue===0) return alert("選択してください"); await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:sec, rpe:selectedRpeValue, memo:t, steps:stepCount}); alert("記録完了"); goHome(); loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); }
-        async function sendMessage() { const txt = document.getElementById('watcher-msg-input').value; await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt}); document.getElementById('watcher-msg-input').value=''; alert("送信しました"); loadWatcherHistory('1d'); } // Send後に履歴更新
+        async function sendMessage() { const txt = document.getElementById('watcher-msg-input').value; await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt}); document.getElementById('watcher-msg-input').value=''; alert("送信しました"); loadWatcherHistory('1d'); }
         function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
         function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); }
         function checkActivityType(){ document.getElementById('act-other-input').classList.toggle('hidden', document.getElementById('act-type').value!=='その他'); }
