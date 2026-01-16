@@ -49,7 +49,7 @@
         .ai-chat-bubble { background: #F3E5F5; padding: 15px; border-radius: 15px; border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
         .user-chat-bubble { background: #E3F2FD; padding: 10px 15px; border-radius: 15px; border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; text-align: right; align-self: flex-end; margin-left: auto; width: fit-content; }
         
-        /* AI入力欄のレイアウト */
+        /* AI入力欄 */
         .ai-input-area, .chat-input-area { display: flex; align-items: center; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; width: 100%; flex-wrap: nowrap; }
         .ai-input, .chat-input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; background: #fafafa; font-size: 16px; }
         .btn-send-icon, .btn-ai-send { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -81,6 +81,7 @@
         <h1 style="color:var(--primary-orange); font-size:40px; margin-bottom:10px; text-align:center;">i-Po</h1>
         <p style="color:#666; margin-bottom:40px; text-align:center;">健康お守りアプリ</p>
         <div class="card">
+            <h2 id="auth-title" style="text-align:center; margin-bottom:15px; font-size:18px;">ログイン</h2>
             <label style="font-size:12px; color:#888;">利用モード</label>
             <select id="auth-type" class="input-box">
                 <option value="user">ユーザー (ご本人)</option>
@@ -88,9 +89,17 @@
             </select>
             <input type="text" id="auth-user" class="input-box" placeholder="ユーザーID (名前)">
             <input type="password" id="auth-pass" class="input-box" placeholder="パスワード">
-            <button onclick="auth('login')" class="btn-main">ログイン</button>
+            
+            <div id="signup-agreement" style="display:none; text-align:left; font-size:13px; margin:10px 0;">
+                <input type="checkbox" id="chk-agree">
+                <label for="chk-agree" style="cursor:pointer;">
+                    データの記録と、生成AI(Groq)による分析・アドバイス生成に同意します。
+                </label>
+            </div>
+
+            <button id="btn-auth-action" onclick="auth()" class="btn-main">ログイン</button>
             <div style="text-align:center; margin-top:15px;">
-                <span onclick="auth('signup')" style="color:var(--primary-orange); cursor:pointer;">新規登録</span>
+                <span id="link-toggle-mode" onclick="toggleAuthMode()" style="color:var(--primary-orange); cursor:pointer;">新規登録はこちら</span>
             </div>
         </div>
     </div>
@@ -253,7 +262,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbxM5EsKIXaMvTkbiK_4Jk8YiakKW3dXsOKlNnV_2IXEAdX9xHihDIclYcxYUVX_41Hv/exec";
+        const GAS_URL = "【ここにGASのURLを貼り付け】";
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
@@ -262,12 +271,35 @@
         let cachedWatcherLogs = {};
         let chatHistory = [];
         let autoRefreshInterval = null;
+        let isSignupMode = false; // ★新規登録モード管理
 
-        async function auth(mode) {
+        // ★認証モード切替
+        function toggleAuthMode() {
+            isSignupMode = !isSignupMode;
+            document.getElementById('auth-title').innerText = isSignupMode ? "新規登録" : "ログイン";
+            document.getElementById('btn-auth-action').innerText = isSignupMode ? "登録して開始" : "ログイン";
+            document.getElementById('link-toggle-mode').innerText = isSignupMode ? "ログインはこちら" : "新規登録はこちら";
+            document.getElementById('signup-agreement').style.display = isSignupMode ? "block" : "none";
+        }
+
+        async function auth() {
             const u = document.getElementById('auth-user').value;
             const p = document.getElementById('auth-pass').value;
             const t = document.getElementById('auth-type').value;
-            const res = await callAPI({action:mode, username:u, password:p, type:t});
+            
+            // ★同意チェック
+            let agreed = false;
+            if (isSignupMode) {
+                if (!document.getElementById('chk-agree').checked) {
+                    alert("利用規約（データ記録・AI利用）への同意が必要です。");
+                    return;
+                }
+                agreed = true;
+            }
+
+            const action = isSignupMode ? 'signup' : 'login';
+            const res = await callAPI({action:action, username:u, password:p, type:t, agreed: agreed});
+            
             if(res.status === 'success') {
                 currentUser = u; userType = t; myClasses = res.classes || [];
                 document.getElementById('screen-auth').classList.add('hidden');
@@ -276,10 +308,8 @@
             } else alert(res.message);
         }
 
-        function loadChatHistory() {
-            const saved = localStorage.getItem('ipo_chat_' + currentUser);
-            if (saved) { chatHistory = JSON.parse(saved); renderChat(); }
-        }
+        // 以降は前回とほぼ同じ（既存ロジック）
+        function loadChatHistory() { const saved = localStorage.getItem('ipo_chat_' + currentUser); if (saved) { chatHistory = JSON.parse(saved); renderChat(); } }
         function renderChat() {
             const container = document.getElementById('ai-chat-container');
             const existingBubbles = container.querySelectorAll('div:not(#ai-advice-initial)');
@@ -341,16 +371,13 @@
         async function loadUserHomeData(range, btn) {
             if(btn) setActiveTab(btn);
             let logs = cachedUserLogs;
-            
             if (range === '2m' || logs.length === 0 || !range) {
                 const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:'2m'}); 
                 if(res.status === 'success') {
                     cachedUserLogs = res.logs;
                     logs = res.logs;
                     if(range === '2m') document.getElementById('ai-advice-initial').innerText = res.ai_advice;
-                    
                     updateChatArea('msg-display-area', res.messages);
-
                     if(logs.length > 0 && range) {
                         const todayStr = new Date().toDateString();
                         const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
@@ -360,7 +387,6 @@
                         document.getElementById('sum-steps').innerText = maxSteps;
                         renderStepChart('user', '1w', logs);
                     }
-                    
                     if(res.messages.length > 0) {
                         const lastMsg = res.messages[res.messages.length-1];
                         if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
@@ -369,7 +395,6 @@
                     }
                 }
             }
-            
             if(range) {
                 const cutoff = new Date();
                 if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
@@ -394,9 +419,7 @@
                     cachedWatcherLogs = res.logs;
                     if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
                     if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
-                    
                     updateChatArea('watcher-msg-display-area', res.messages);
-                    
                     if(res.messages.length > 0) {
                         const lastMsg = res.messages[res.messages.length-1];
                         if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
@@ -420,23 +443,11 @@
         function updateChatArea(elementId, messages) {
             const msgArea = document.getElementById(elementId);
             if(messages.length===0) { msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>'; return; }
-            
             const html = messages.map(m => {
                 const isMe = m.from === currentUser;
-                return `
-                <div style="display:flex; flex-direction:column; width:100%;">
-                    <div class="chat-bubble ${isMe ? 'chat-right' : 'chat-left'}">
-                        <div class="chat-meta">${isMe ? 'あなた' : m.from}</div>
-                        ${m.content}
-                    </div>
-                    ${isMe && m.is_read==='TRUE' ? '<div class="read-status">既読</div>' : ''}
-                </div>`;
+                return `<div style="display:flex; flex-direction:column; width:100%;"><div class="chat-bubble ${isMe ? 'chat-right' : 'chat-left'}"><div class="chat-meta">${isMe ? 'あなた' : m.from}</div>${m.content}</div>${isMe && m.is_read==='TRUE' ? '<div class="read-status">既読</div>' : ''}</div>`;
             }).join('');
-            
-            if(msgArea.innerHTML.length !== html.length) {
-                msgArea.innerHTML = html;
-                msgArea.scrollTop = msgArea.scrollHeight;
-            }
+            if(msgArea.innerHTML.length !== html.length) { msgArea.innerHTML = html; msgArea.scrollTop = msgArea.scrollHeight; }
         }
 
         async function sendMessage(mode) {
@@ -444,47 +455,19 @@
             const areaId = mode === 'user' ? 'msg-display-area' : 'watcher-msg-display-area';
             const txt = document.getElementById(inputId).value;
             if(!txt) return;
-
             stopAutoRefresh();
-
             const area = document.getElementById(areaId);
-            area.innerHTML += `
-            <div style="display:flex; flex-direction:column; width:100%;">
-                <div class="chat-bubble chat-right" style="opacity:0.7;">
-                    <div class="chat-meta">送信中...</div>
-                    ${txt}
-                </div>
-            </div>`;
+            area.innerHTML += `<div style="display:flex; flex-direction:column; width:100%;"><div class="chat-bubble chat-right" style="opacity:0.7;"><div class="chat-meta">送信中...</div>${txt}</div></div>`;
             area.scrollTop = area.scrollHeight;
             document.getElementById(inputId).value = '';
-
             await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
-            
-            if(mode === 'user') await loadUserHomeData(null, null); 
-            else await loadWatcherHistory(null, null);
+            if(mode === 'user') await loadUserHomeData(null, null); else await loadWatcherHistory(null, null);
             startAutoRefresh();
-        }
-
-        async function sendToAi() {
-            const input = document.getElementById('ai-chat-input');
-            const msg = input.value;
-            chatHistory.push({role: 'user', text: msg});
-            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
-            renderChat();
-            
-            input.value = "";
-            
-            const recentHistory = chatHistory.slice(-6);
-            
-            const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: recentHistory});
-            
-            chatHistory.push({role: 'ai', text: res.reply || "エラー"});
-            localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory));
-            renderChat();
         }
 
         function updateStepChart(mode, range, btn) { if(btn) setActiveTab(btn); if(mode === 'user') renderStepChart('user', range, cachedUserLogs); else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); } }
         function renderStepChart(mode, range, logs, memberName) { const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d'); if(mode === 'user' && userChart) userChart.destroy(); if(mode === 'watcher' && watcherChart) watcherChart.destroy(); const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60); for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; } logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; }); const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } }; if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config); }
+        async function sendToAi() { const input = document.getElementById('ai-chat-input'); const msg = input.value; chatHistory.push({role: 'user', text: msg}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); input.value = ""; const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: chatHistory.slice(-6)}); chatHistory.push({role: 'ai', text: res.reply || "エラー"}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); }
         function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
         async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
         async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
