@@ -66,7 +66,6 @@
         .rpe-btn { background: #E0E0E0; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-weight: bold; color: #555; }
         .rpe-btn.selected { background: var(--primary-blue); color: white; }
 
-        /* 新機能用のスタイル */
         .tree-container { position: relative; height: 150px; border-radius: 15px; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; margin-bottom: 15px; }
         .tree-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; transition: background 1s; }
         .tree-content { position: relative; z-index: 1; text-align: center; }
@@ -127,7 +126,7 @@
             <div class="tree-container">
                 <div id="tree-bg" class="tree-bg"></div>
                 <div class="tree-content">
-                    <div id="tree-emoji" class="tree-emoji">🌳</div>
+                    <div id="tree-emoji" class="tree-emoji">🌱</div>
                 </div>
                 <div id="tree-deco" class="tree-deco"></div>
             </div>
@@ -327,7 +326,6 @@
                     cachedUserLogs = res.logs; logs = res.logs; cachedMessages = res.messages;
                     updateChatArea('msg-display-area', res.messages);
                     
-                    // ★ 高RPE連続チェックによるAIアドバイス上書き
                     let aiAdvice = res.ai_advice;
                     if(logs.length >= 2) {
                         const recentLogs = logs.slice(-2);
@@ -337,9 +335,9 @@
                     }
                     if(range === '2m') document.getElementById('ai-advice-initial').innerText = aiAdvice;
 
-                    // ★ 新機能：カレンダーと木の更新
-                    renderCalendar(logs, cachedMessages);
-                    updateTree(logs);
+                    // ★ スタンプ数を計算して木に反映
+                    const currentStampCount = renderCalendar(logs, cachedMessages);
+                    updateTree(logs, currentStampCount);
 
                     if(logs.length > 0 && range) {
                         const todayStr = new Date().toDateString(); const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
@@ -358,8 +356,8 @@
             }
         }
 
-        // ★★★ 新機能：お守りの木の更新 ★★★
-        function updateTree(logs) {
+        // ★★★ 新機能：お守りの木の成長ロジック ★★★
+        function updateTree(logs, stampCount) {
             const now = new Date();
             const month = now.getMonth() + 1;
             const hour = now.getHours();
@@ -368,24 +366,35 @@
             const treeEmoji = document.getElementById('tree-emoji');
             const treeDeco = document.getElementById('tree-deco');
             
-            // 1. 時間帯で背景と装飾を変更
+            // 1. 時間帯で背景と装飾を変更 (これまで通り)
             let decoStr = '';
-            if(hour >= 5 && hour < 10) { treeBg.style.background = 'linear-gradient(to bottom, #87CEEB, #E0F6FF)'; decoStr += '💧'; } // 朝
-            else if(hour >= 10 && hour < 16) { treeBg.style.background = 'linear-gradient(to bottom, #4FC3F7, #B3E5FC)'; } // 昼
-            else if(hour >= 16 && hour < 19) { treeBg.style.background = 'linear-gradient(to bottom, #FFB74D, #FFE0B2)'; } // 夕方
-            else { treeBg.style.background = 'linear-gradient(to bottom, #2C3E50, #4CA1AF)'; decoStr += '🏮'; } // 夜
+            if(hour >= 5 && hour < 10) { treeBg.style.background = 'linear-gradient(to bottom, #87CEEB, #E0F6FF)'; decoStr += '💧'; } 
+            else if(hour >= 10 && hour < 16) { treeBg.style.background = 'linear-gradient(to bottom, #4FC3F7, #B3E5FC)'; } 
+            else if(hour >= 16 && hour < 19) { treeBg.style.background = 'linear-gradient(to bottom, #FFB74D, #FFE0B2)'; } 
+            else { treeBg.style.background = 'linear-gradient(to bottom, #2C3E50, #4CA1AF)'; decoStr += '🏮'; } 
             
-            // 2. 季節で木を変更
-            let baseTree = '🌳';
-            if(month >= 3 && month <= 5) baseTree = '🌸';
-            else if(month >= 9 && month <= 11) baseTree = '🍂';
-            else if(month === 12 || month <= 2) baseTree = '🌲';
+            // 2. スタンプ数（成長度）と月による木の変化
+            let baseTree = '🌱';
+            if (stampCount <= 5) {
+                baseTree = '🌱'; // 苗
+            } else if (stampCount <= 10) {
+                baseTree = '🌿'; // 小さい木
+            } else if (stampCount <= 24) {
+                // 中ぐらいの木 (11〜24個)
+                if (month === 12 || month === 1) baseTree = '🌲'; // 冬は針葉樹
+                else if (month === 7) baseTree = '🎋'; // 7月は笹
+                else if (month === 8) baseTree = '🌴'; // 8月はヤシ
+                else baseTree = '🌳'; // その他は広葉樹
+            } else {
+                // 25個以上: 各月の花等を咲かせて達成感
+                const flowers = { 1:'🎍', 2:'🌺', 3:'🍑', 4:'🌸', 5:'🌷', 6:'🪻', 7:'🎋✨', 8:'🌻', 9:'🍇', 10:'🍁', 11:'🍂', 12:'🎄' };
+                baseTree = flowers[month] || '🌸';
+            }
             treeEmoji.innerText = baseTree;
             
-            // 3. 記録による変化
+            // 3. 記録による変化 (頑張りすぎ、休息の表現など)
             let filterStyle = 'none';
             if(logs && logs.length > 0) {
-                // 頑張りすぎ判定（直近2回がRPE5以上）
                 const recentLogs = logs.slice(-2);
                 if(recentLogs.length === 2 && recentLogs.every(l => l.rpe >= 5)) {
                     filterStyle = 'sepia(0.8) hue-rotate(-50deg) saturate(2)'; // 赤く（熱を帯びる）
@@ -394,8 +403,8 @@
                     const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
                     if(todayLogs.length > 0) {
                         const hasRest = todayLogs.some(l => l.memo.includes('休息'));
-                        if(hasRest) decoStr += ' 🌼🍄'; // 休息で花とキノコ
-                        else decoStr += ' ✨✨'; // 活動でキラキラ
+                        if(hasRest) decoStr += ' 🌼🍄'; 
+                        else decoStr += ' ✨✨'; 
                     }
                 }
             }
@@ -403,7 +412,7 @@
             treeDeco.innerText = decoStr;
         }
 
-        // ★★★ 新機能：彩りカレンダーの描画 ★★★
+        // 彩りカレンダーの描画 (スタンプ数を返すように変更)
         function renderCalendar(logs, messages) {
             const now = new Date();
             const year = now.getFullYear();
@@ -415,7 +424,6 @@
             const days = ['日','月','火','水','木','金','土'];
             days.forEach(d => html += `<div style="font-weight:bold; color:#888;">${d}</div>`);
             
-            // 空白セル
             for(let i=0; i<firstDay.getDay(); i++) html += '<div></div>';
             
             let stampCount = 0;
@@ -425,11 +433,10 @@
                 const dayLogs = logs.filter(l => new Date(l.date).toDateString() === targetDate);
                 const dayMsgs = messages.filter(m => new Date(m.date).toDateString() === targetDate && m.from === currentUser);
                 
-                let bgColor = '#f0f0f0'; // デフォルトの色
+                let bgColor = '#f0f0f0'; 
                 let textColor = '#555';
                 let hasStamp = false;
 
-                // 優先順位: 交流(ピンク) > 休息(水色) > 活動(オレンジ)
                 if(dayMsgs.length > 0) {
                     bgColor = '#F8BBD0'; textColor = '#C2185B'; hasStamp = true;
                 } else if(dayLogs.length > 0) {
@@ -438,8 +445,8 @@
                         bgColor = '#B3E5FC'; textColor = '#0288D1'; hasStamp = true;
                     } else {
                         const totalDur = dayLogs.reduce((s, l) => s + l.duration, 0);
-                        if(totalDur >= 1800) { bgColor = '#FF9800'; textColor = 'white'; } // 30分以上で濃いオレンジ
-                        else { bgColor = '#FFCC80'; textColor = '#E65100'; } // 薄いオレンジ
+                        if(totalDur >= 1800) { bgColor = '#FF9800'; textColor = 'white'; } 
+                        else { bgColor = '#FFCC80'; textColor = '#E65100'; } 
                         hasStamp = true;
                     }
                 }
@@ -451,6 +458,8 @@
             
             document.getElementById('calendar-grid').innerHTML = html;
             document.getElementById('stamp-count').innerText = stampCount;
+            
+            return stampCount; // ここで計算したスタンプ数を返す
         }
 
         async function loadWatcherHistory(range, btn) { if(btn) setActiveTab(btn); if (Object.keys(cachedWatcherLogs).length === 0 || !range) { const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:'2m'}); if(res.status === 'success') { cachedWatcherLogs = res.logs; if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice; updateChatArea('watcher-msg-display-area', res.messages); if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]); } } if(range) { const container = document.getElementById('watcher-member-list'); container.innerHTML = ""; const cutoff = new Date(); if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60); for (const [member, logs] of Object.entries(cachedWatcherLogs)) { const displayLogs = logs.filter(l => new Date(l.date) >= cutoff); const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / <span style="font-weight:bold; color:#FF9800;">RPE${l.rpe}</span> / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>'; container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${member}</div>${logHtml}</div>`; } } }
@@ -480,7 +489,6 @@
                 let t = document.getElementById('act-type-now').value; if(t === 'その他') t = document.getElementById('act-other-input-now').value; 
                 const tm = document.getElementById('timer-val').innerText.split(':'); durationSec = parseInt(tm[1])*60 + parseInt(tm[2]); 
                 rpe = selectedRpeNow; memo = t; steps = stepCount; 
-                if(rpe === 0 && memo !== '休息') return alert("疲労度を選択してください"); // 休息時はRPE0でも通すなどの工夫も可能ですが、ここでは一律要求します
                 if(rpe === 0) return alert("疲労度を選択してください（休息の場合は「とても楽」などを選んでください）");
             } else {
                 let t = document.getElementById('act-type-past').value; if(t === 'その他') t = document.getElementById('act-other-input-past').value; 
