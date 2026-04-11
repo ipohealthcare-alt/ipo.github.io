@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* (前回のCSSと同じですが、省略せずに記載します) */
         :root {
             --bg-color: #FFF8E1; --card-bg: #FFFFFF;
             --primary-orange: #FF9800; --primary-green: #66BB6A; --primary-blue: #4285F4;
@@ -29,8 +30,8 @@
         
         /* 履歴・グラフ */
         .history-tabs { display: flex; gap: 8px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 8px; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 12px; text-align: center; transition: 0.2s; }
-        .tab-btn.active { background: var(--primary-orange); color: white; border-color: var(--primary-orange); font-weight: bold; }
+        .tab-btn { flex: 1; padding: 10px; border: 1px solid #ddd; background: #fff; border-radius: 20px; cursor: pointer; font-size: 13px; text-align: center; transition: 0.2s; font-weight:bold; color: #555;}
+        .tab-btn.active { background: var(--primary-orange); color: white; border-color: var(--primary-orange); }
         .log-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #FAFAFA; border-radius: 12px; margin-bottom: 10px; border-left: 5px solid #ddd; }
         .log-left { display: flex; flex-direction: column; gap: 4px; }
         .log-badge { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; color: white; width: fit-content; }
@@ -38,18 +39,15 @@
         .log-date { font-size: 12px; color: #888; }
         .log-right { text-align: right; font-size: 14px; font-weight: bold; color: #555; }
 
-        /* チャット (AI・人間共通) */
+        /* チャット */
         .chat-container { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; padding-right: 5px; }
         .chat-bubble { padding: 10px 15px; border-radius: 15px; margin-bottom: 8px; font-size: 14px; max-width: 80%; line-height: 1.4; word-wrap: break-word; }
         .chat-left { align-self: flex-start; background: #F5F5F5; border-bottom-left-radius: 0; color: #333; }
         .chat-right { align-self: flex-end; background: #E3F2FD; border-bottom-right-radius: 0; color: #0D47A1; }
         .chat-meta { font-size: 10px; color: #999; margin-bottom: 2px; }
         .read-status { font-size: 10px; color: #888; text-align: right; margin-top: -5px; margin-bottom: 5px; margin-right: 5px; }
-        
         .ai-chat-bubble { background: #F3E5F5; padding: 15px; border-radius: 15px; border-bottom-left-radius: 0; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
         .user-chat-bubble { background: #E3F2FD; padding: 10px 15px; border-radius: 15px; border-bottom-right-radius: 0; margin-bottom: 10px; font-size: 14px; text-align: right; align-self: flex-end; margin-left: auto; width: fit-content; }
-        
-        /* AI入力欄 */
         .ai-input-area, .chat-input-area { display: flex; align-items: center; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; width: 100%; flex-wrap: nowrap; }
         .ai-input, .chat-input { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; background: #fafafa; font-size: 16px; }
         .btn-send-icon, .btn-ai-send { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -89,14 +87,10 @@
             </select>
             <input type="text" id="auth-user" class="input-box" placeholder="ユーザーID (名前)">
             <input type="password" id="auth-pass" class="input-box" placeholder="パスワード">
-            
             <div id="signup-agreement" style="display:none; text-align:left; font-size:13px; margin:10px 0;">
                 <input type="checkbox" id="chk-agree">
-                <label for="chk-agree" style="cursor:pointer;">
-                    データの記録と、生成AI(Groq)による分析・アドバイス生成に同意します。
-                </label>
+                <label for="chk-agree" style="cursor:pointer;">データの記録と、生成AI(Groq)による分析・アドバイス生成に同意します。</label>
             </div>
-
             <button id="btn-auth-action" onclick="auth()" class="btn-main">ログイン</button>
             <div style="text-align:center; margin-top:15px;">
                 <span id="link-toggle-mode" onclick="toggleAuthMode()" style="color:var(--primary-orange); cursor:pointer;">新規登録はこちら</span>
@@ -122,17 +116,14 @@
 
     <div id="screen-home" class="screen hidden">
         <h1 style="font-size:28px; margin:10px 0 5px 0;">ホーム</h1>
-        
         <div class="card" style="padding:10px 20px; background:#fff3e0; border:1px solid #ffe0b2; text-align:center; margin-bottom:20px;">
             <span style="font-size:12px; color:#e65100;">現在のクラスコード</span><br>
             <span id="display-user-code" style="font-weight:bold; font-size:20px; color:#e65100;">---</span>
         </div>
-
         <div class="card action-card" onclick="goToRecord()">
             <div class="icon-circle-green"><span class="material-icons-round">directions_walk</span></div>
-            <div style="font-weight:bold; font-size:18px;">今日の活動を記録する</div>
+            <div style="font-weight:bold; font-size:18px;">活動を記録する</div>
         </div>
-
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">今日の活動概要</div>
         <div class="card">
             <div class="summary-row">
@@ -148,8 +139,7 @@
                 <button class="step-switch-btn" onclick="enableSensors()">📡 歩数計センサーをONにする</button>
             </div>
         </div>
-
-        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">健康AIアシスタント (チャット)</div>
+        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">健康AIアシスタント</div>
         <div class="card">
             <div class="ai-header"><span class="material-icons-round icon-brain">psychology</span><span style="font-weight:bold;">i-Po アシスタント</span></div>
             <div id="ai-chat-container" style="max-height:300px; overflow-y:auto; display:flex; flex-direction:column;">
@@ -160,7 +150,6 @@
                 <button onclick="sendToAi()" class="btn-ai-send"><span class="material-icons-round">send</span></button>
             </div>
         </div>
-
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">歩数履歴グラフ</div>
         <div class="card">
             <div class="history-tabs">
@@ -170,7 +159,6 @@
             </div>
             <canvas id="userStepChart"></canvas>
         </div>
-
         <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">活動履歴リスト</div>
         <div class="card" style="min-height:200px;">
             <div class="history-tabs">
@@ -178,20 +166,8 @@
                 <div class="tab-btn" onclick="loadUserHomeData('1w', this)">1週間</div>
                 <div class="tab-btn" onclick="loadUserHomeData('1m', this)">1ヶ月</div>
             </div>
-            <div id="user-history-list">
-                <div style="text-align:center; color:#aaa; font-size:12px; padding:20px;">データ読み込み中...</div>
-            </div>
+            <div id="user-history-list"></div>
         </div>
-
-        <div style="font-size:14px; color:var(--text-sub); font-weight:bold; margin-bottom:8px;">ご家族・お医者さんとのチャット</div>
-        <div class="card">
-            <div id="msg-display-area" class="chat-container"></div>
-            <div class="chat-input-area">
-                <input type="text" id="user-msg-input" class="chat-input" placeholder="メッセージを送る...">
-                <button onclick="sendMessage('user')" class="btn-send-icon"><span class="material-icons-round">send</span></button>
-            </div>
-        </div>
-
         <div id="bottom-nav" class="bottom-nav">
             <div class="nav-item active" onclick="goHome()"><span class="material-icons-round" style="font-size:24px;">home</span>ホーム</div>
             <div class="nav-item" onclick="backToHub()"><span class="material-icons-round" style="font-size:24px;">grid_view</span>クラス切替</div>
@@ -205,15 +181,12 @@
             <h2 id="watcher-class-title">クラス名</h2>
             <p id="watcher-class-code" style="font-size:12px; opacity:0.9;">Code: ---</p>
         </div>
-        
         <div class="card" style="border-left:5px solid #1967d2;">
             <div style="font-weight:bold; color:#1967d2; margin-bottom:5px;">✨ AI見守りアドバイス</div>
             <p id="watcher-ai-msg" style="font-size:14px; margin:0;">分析中...</p>
         </div>
-
         <h3 style="margin-bottom:10px;">メンバーの活動状況</h3>
         <div class="card">
-            <p style="font-size:12px;">メンバー選択 (最初の人を表示)</p>
             <div class="history-tabs">
                 <div class="tab-btn active" onclick="updateStepChart('watcher', '1w', this)">1週間</div>
                 <div class="tab-btn" onclick="updateStepChart('watcher', '1m', this)">1ヶ月</div>
@@ -221,7 +194,6 @@
             </div>
             <canvas id="watcherStepChart"></canvas>
         </div>
-
         <div class="card">
             <div class="history-tabs">
                 <div class="tab-btn active" onclick="loadWatcherHistory('1d', this)">1日</div>
@@ -230,50 +202,74 @@
             </div>
             <div id="watcher-member-list"></div>
         </div>
-
-        <h3 style="margin-bottom:10px;">チャットルーム</h3>
-        <div class="card">
-            <div id="watcher-msg-display-area" class="chat-container"></div>
-            <div class="chat-input-area">
-                <input id="watcher-msg-input" class="chat-input" placeholder="メッセージを入力...">
-                <button onclick="sendMessage('watcher')" class="btn-send-icon"><span class="material-icons-round">send</span></button>
-            </div>
-        </div>
     </div>
 
-    <div id="screen-record" class="screen hidden" style="padding-top:40px;">
+    <div id="screen-record" class="screen hidden" style="padding-top:30px;">
         <h2 style="text-align:center; margin-bottom:20px;">活動を記録</h2>
-        <label style="font-weight:bold; display:block; margin-bottom:10px;">1. なんの活動をしましたか？</label>
-        <select id="act-type" class="input-box" onchange="checkActivityType()" style="border:none; padding:15px; border-radius:12px;">
-            <option value="散歩">散歩</option><option value="買い物">買い物</option><option value="家事">家事</option><option value="ラジオ体操">ラジオ体操</option><option value="その他">その他</option>
-        </select>
-        <input type="text" id="act-other-input" class="input-box hidden" placeholder="活動名を入力">
-        <label style="font-weight:bold; display:block; margin-bottom:10px;">2. 活動時間は？</label>
-        <div class="card" style="text-align:center;">
-            <div class="timer-display" id="timer-val">00:00:00</div>
-            <button id="btn-timer" style="background:var(--primary-green); color:white; border:none; padding:15px 60px; border-radius:8px; font-size:20px; font-weight:bold; cursor:pointer;" onclick="toggleTimer()">スタート</button>
+        
+        <div class="history-tabs" style="margin-bottom: 25px;">
+            <div id="tab-now" class="tab-btn active" onclick="switchRecordTab('now')">⏱ 今から記録する</div>
+            <div id="tab-past" class="tab-btn" onclick="switchRecordTab('past')">✏️ 過去の記録をつける</div>
         </div>
-        <label style="font-weight:bold; display:block; margin-bottom:10px;">3. どのくらい疲れましたか？</label>
-        <div class="rpe-grid">
-            <button class="rpe-btn" onclick="selectRpe(1, this)">とても楽</button><button class="rpe-btn" onclick="selectRpe(2, this)">楽</button><button class="rpe-btn" onclick="selectRpe(3, this)">普通</button><button class="rpe-btn" onclick="selectRpe(4, this)">ややきつい</button><button class="rpe-btn" onclick="selectRpe(5, this)">きつい</button><button class="rpe-btn" onclick="selectRpe(6, this)">とてもきつい</button>
+
+        <div id="record-now-section">
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">1. なんの活動をしますか？</label>
+            <select id="act-type-now" class="input-box" onchange="checkActivityType('now')" style="border:none; padding:15px; border-radius:12px;">
+                <option value="散歩">散歩</option><option value="買い物">買い物</option><option value="家事">家事</option><option value="ラジオ体操">ラジオ体操</option><option value="その他">その他</option>
+            </select>
+            <input type="text" id="act-other-input-now" class="input-box hidden" placeholder="活動名を入力">
+            
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">2. 活動時間は？</label>
+            <div class="card" style="text-align:center;">
+                <div class="timer-display" id="timer-val">00:00:00</div>
+                <button id="btn-timer" style="background:var(--primary-green); color:white; border:none; padding:15px 60px; border-radius:8px; font-size:20px; font-weight:bold; cursor:pointer;" onclick="toggleTimer()">スタート</button>
+            </div>
+            
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">3. どのくらい疲れましたか？</label>
+            <div class="rpe-grid">
+                <button class="rpe-btn rpe-now" onclick="selectRpe('now', 1, this)">とても楽</button><button class="rpe-btn rpe-now" onclick="selectRpe('now', 2, this)">楽</button><button class="rpe-btn rpe-now" onclick="selectRpe('now', 3, this)">普通</button><button class="rpe-btn rpe-now" onclick="selectRpe('now', 4, this)">ややきつい</button><button class="rpe-btn rpe-now" onclick="selectRpe('now', 5, this)">きつい</button><button class="rpe-btn rpe-now" onclick="selectRpe('now', 6, this)">とてもきつい</button>
+            </div>
         </div>
-        <button onclick="submitLog()" class="btn-main" style="background:white; color:var(--primary-blue); border:1px solid #ddd;">この内容で記録する</button>
-        <button onclick="goHome()" style="background:none; border:none; color:#999; width:100%; margin-top:10px; cursor:pointer;">キャンセル</button>
+
+        <div id="record-past-section" class="hidden">
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">1. なんの活動をしましたか？ <span style="color:red; font-size:12px;">(必須)</span></label>
+            <select id="act-type-past" class="input-box" onchange="checkActivityType('past')" style="border:none; padding:15px; border-radius:12px;">
+                <option value="散歩">散歩</option><option value="買い物">買い物</option><option value="家事">家事</option><option value="ラジオ体操">ラジオ体操</option><option value="その他">その他</option>
+            </select>
+            <input type="text" id="act-other-input-past" class="input-box hidden" placeholder="活動名を入力">
+            
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">2. 活動時間 <span style="color:red; font-size:12px;">(必須)</span></label>
+            <input type="number" id="past-duration" class="input-box" placeholder="例: 30 (分単位・半角数字のみ)">
+            
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">3. どのくらい疲れましたか？ <span style="color:red; font-size:12px;">(必須)</span></label>
+            <div class="rpe-grid">
+                <button class="rpe-btn rpe-past" onclick="selectRpe('past', 1, this)">とても楽</button><button class="rpe-btn rpe-past" onclick="selectRpe('past', 2, this)">楽</button><button class="rpe-btn rpe-past" onclick="selectRpe('past', 3, this)">普通</button><button class="rpe-btn rpe-past" onclick="selectRpe('past', 4, this)">ややきつい</button><button class="rpe-btn rpe-past" onclick="selectRpe('past', 5, this)">きつい</button><button class="rpe-btn rpe-past" onclick="selectRpe('past', 6, this)">とてもきつい</button>
+            </div>
+
+            <label style="font-weight:bold; display:block; margin-bottom:10px;">4. おおまかな歩数 <span style="color:#888; font-size:12px;">(任意)</span></label>
+            <input type="number" id="past-steps" class="input-box" placeholder="例: 2000 (半角数字のみ)">
+        </div>
+
+        <button onclick="submitLog()" class="btn-main" style="background:white; color:var(--primary-blue); border:2px solid var(--primary-blue); margin-top:20px;">この内容で記録する</button>
+        <button onclick="goHome()" style="background:none; border:none; color:#999; width:100%; margin-top:10px; cursor:pointer;">キャンセルして戻る</button>
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyDgVbEo8FRmdOBQk3lRYlU8p_LMmD4k-WAectLZIwTB8OdnExH1_FLtOLOlvy54AvR/exec";
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyDgVbEo8FRmdOBQk3lRYlU8p_LMmD4k-WAectLZIwTB8OdnExH1_FLtOLOlvy54AvR/exec"; // ★ご自身のGAS URLを入れてください
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
-        let stepCount=0, timerInterval, startTime, isTimerRunning=false, selectedRpeValue=0;
+        let stepCount=0, timerInterval, startTime, isTimerRunning=false;
         let userChart=null, watcherChart=null;
-        let cachedUserLogs = [];
-        let cachedWatcherLogs = {};
-        let chatHistory = [];
-        let autoRefreshInterval = null;
-        let isSignupMode = false; // ★新規登録モード管理
+        let cachedUserLogs = []; let cachedWatcherLogs = {};
+        let chatHistory = []; let autoRefreshInterval = null;
+        let isSignupMode = false;
 
-        // ★認証モード切替
+        // ★追加：記録タブの管理変数
+        let currentRecordTab = 'now'; 
+        let selectedRpeNow = 0;
+        let selectedRpePast = 0;
+
+        // 認証系
         function toggleAuthMode() {
             isSignupMode = !isSignupMode;
             document.getElementById('auth-title').innerText = isSignupMode ? "新規登録" : "ログイン";
@@ -281,133 +277,46 @@
             document.getElementById('link-toggle-mode').innerText = isSignupMode ? "ログインはこちら" : "新規登録はこちら";
             document.getElementById('signup-agreement').style.display = isSignupMode ? "block" : "none";
         }
-
         async function auth() {
             const u = document.getElementById('auth-user').value;
             const p = document.getElementById('auth-pass').value;
             const t = document.getElementById('auth-type').value;
-            
-            // ★同意チェック
             let agreed = false;
-            if (isSignupMode) {
-                if (!document.getElementById('chk-agree').checked) {
-                    alert("利用規約（データ記録・AI利用）への同意が必要です。");
-                    return;
-                }
-                agreed = true;
-            }
-
+            if (isSignupMode) { if (!document.getElementById('chk-agree').checked) { alert("利用規約への同意が必要です。"); return; } agreed = true; }
             const action = isSignupMode ? 'signup' : 'login';
             const res = await callAPI({action:action, username:u, password:p, type:t, agreed: agreed});
-            
-            if(res.status === 'success') {
-                currentUser = u; userType = t; myClasses = res.classes || [];
-                document.getElementById('screen-auth').classList.add('hidden');
-                showHub();
-                loadChatHistory();
-            } else alert(res.message);
+            if(res.status === 'success') { currentUser = u; userType = t; myClasses = res.classes || []; document.getElementById('screen-auth').classList.add('hidden'); showHub(); loadChatHistory(); } else alert(res.message);
         }
 
-        // 以降は前回とほぼ同じ（既存ロジック）
-        function loadChatHistory() { const saved = localStorage.getItem('ipo_chat_' + currentUser); if (saved) { chatHistory = JSON.parse(saved); renderChat(); } }
-        function renderChat() {
-            const container = document.getElementById('ai-chat-container');
-            const existingBubbles = container.querySelectorAll('div:not(#ai-advice-initial)');
-            existingBubbles.forEach(b => b.remove());
-            chatHistory.forEach(msg => {
-                const div = document.createElement('div');
-                div.className = msg.role === 'user' ? 'user-chat-bubble' : 'ai-chat-bubble';
-                div.innerText = msg.text;
-                container.appendChild(div);
-            });
-            container.scrollTop = container.scrollHeight;
-        }
+        // 画面遷移・データ読み込み
+        function showHub() { stopAutoRefresh(); document.getElementById('screen-hub').classList.remove('hidden'); document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-watcher-detail').classList.add('hidden'); document.getElementById('btn-create-class').classList.toggle('hidden', userType === 'watcher'); const grid = document.getElementById('hub-class-list'); if(myClasses.length === 0) grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888;">クラスに参加していません</div>'; else grid.innerHTML = myClasses.map(c => `<div class="class-card" onclick="enterClass('${c.id}', '${c.name}')"><div class="class-avatar">${c.name.charAt(0)}</div><div style="font-weight:bold;">${c.name}</div><div style="font-size:12px; color:#888;">${c.owner}</div></div>`).join(''); }
+        function enterClass(id, name) { currentClass = id; document.getElementById('screen-hub').classList.add('hidden'); if(userType === 'user') { document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('display-user-code').innerText = id; loadUserHomeData('2m', null); } else { document.getElementById('screen-watcher-detail').classList.remove('hidden'); document.getElementById('watcher-class-title').innerText = name; document.getElementById('watcher-class-code').innerText = "Code: " + id; loadWatcherHistory('2m', null); } startAutoRefresh(); }
+        function backToHub() { stopAutoRefresh(); document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-watcher-detail').classList.add('hidden'); document.getElementById('screen-record').classList.add('hidden'); showHub(); }
+        function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
+        function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); switchRecordTab('now'); }
 
-        function showHub() {
-            stopAutoRefresh();
-            document.getElementById('screen-hub').classList.remove('hidden');
-            document.getElementById('screen-home').classList.add('hidden');
-            document.getElementById('screen-watcher-detail').classList.add('hidden');
-            document.getElementById('btn-create-class').classList.toggle('hidden', userType === 'watcher');
-            const grid = document.getElementById('hub-class-list');
-            if(myClasses.length === 0) grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; color:#888;">クラスに参加していません</div>';
-            else grid.innerHTML = myClasses.map(c => `<div class="class-card" onclick="enterClass('${c.id}', '${c.name}')"><div class="class-avatar">${c.name.charAt(0)}</div><div style="font-weight:bold;">${c.name}</div><div style="font-size:12px; color:#888;">${c.owner}</div></div>`).join('');
-        }
-
-        function enterClass(id, name) {
-            currentClass = id;
-            document.getElementById('screen-hub').classList.add('hidden');
-            if(userType === 'user') {
-                document.getElementById('screen-home').classList.remove('hidden');
-                document.getElementById('display-user-code').innerText = id;
-                loadUserHomeData('2m', null); 
-            } else {
-                document.getElementById('screen-watcher-detail').classList.remove('hidden');
-                document.getElementById('watcher-class-title').innerText = name;
-                document.getElementById('watcher-class-code').innerText = "Code: " + id;
-                loadWatcherHistory('2m', null);
-            }
-            startAutoRefresh();
-        }
-        function backToHub() {
-            stopAutoRefresh();
-            document.getElementById('screen-home').classList.add('hidden');
-            document.getElementById('screen-watcher-detail').classList.add('hidden');
-            document.getElementById('screen-record').classList.add('hidden');
-            showHub();
-        }
-
-        function startAutoRefresh() {
-            if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-            autoRefreshInterval = setInterval(() => {
-                if (currentClass) {
-                    if (userType === 'user') loadUserHomeData(null, null); 
-                    else loadWatcherHistory(null, null);
-                }
-            }, 10000); 
-        }
-        function stopAutoRefresh() { if (autoRefreshInterval) clearInterval(autoRefreshInterval); }
-
+        // データ取得
         async function loadUserHomeData(range, btn) {
-            if(btn) setActiveTab(btn);
-            let logs = cachedUserLogs;
+            if(btn) setActiveTab(btn); let logs = cachedUserLogs;
             if (range === '2m' || logs.length === 0 || !range) {
                 const res = await callAPI({action:'get_user_home_data', username:currentUser, class_id:currentClass, range:'2m'}); 
                 if(res.status === 'success') {
-                    cachedUserLogs = res.logs;
-                    logs = res.logs;
+                    cachedUserLogs = res.logs; logs = res.logs;
                     if(range === '2m') document.getElementById('ai-advice-initial').innerText = res.ai_advice;
-                    updateChatArea('msg-display-area', res.messages);
                     if(logs.length > 0 && range) {
-                        const todayStr = new Date().toDateString();
-                        const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
-                        const totalTime = todayLogs.reduce((sum, l) => sum + l.duration, 0);
-                        const maxSteps = todayLogs.length > 0 ? Math.max(...todayLogs.map(l => l.steps)) : stepCount;
-                        document.getElementById('sum-time').innerText = Math.floor(totalTime/60);
-                        document.getElementById('sum-steps').innerText = maxSteps;
+                        const todayStr = new Date().toDateString(); const todayLogs = logs.filter(l => new Date(l.date).toDateString() === todayStr);
+                        document.getElementById('sum-time').innerText = Math.floor(todayLogs.reduce((sum, l) => sum + l.duration, 0)/60);
+                        document.getElementById('sum-steps').innerText = todayLogs.length > 0 ? Math.max(...todayLogs.map(l => l.steps)) : stepCount;
                         renderStepChart('user', '1w', logs);
-                    }
-                    if(res.messages.length > 0) {
-                        const lastMsg = res.messages[res.messages.length-1];
-                        if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
-                            callAPI({action:'mark_read', username:currentUser, class_id:currentClass});
-                        }
                     }
                 }
             }
             if(range) {
-                const cutoff = new Date();
-                if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
+                const cutoff = new Date(); if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
                 const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
                 const container = document.getElementById('user-history-list');
                 if(displayLogs.length === 0) container.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">履歴なし</div>';
-                else {
-                    container.innerHTML = displayLogs.map(l => {
-                        let bgClass = 'bg-other'; if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house';
-                        let rpeColor = '#4CAF50'; if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800';
-                        return `<div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};"><div class="log-left"><span class="log-badge ${bgClass}">${l.memo}</span><span class="log-date">${new Date(l.date).toLocaleString()}</span></div><div class="log-right"><div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div><div style="font-size:12px; color:#888;">${l.steps}歩</div></div></div>`;
-                    }).reverse().join('');
-                }
+                else container.innerHTML = displayLogs.map(l => { let bgClass = 'bg-other'; if(l.memo.includes('散歩')) bgClass='bg-walk'; else if(l.memo.includes('買い物')) bgClass='bg-shop'; else if(l.memo.includes('家事')) bgClass='bg-house'; let rpeColor = '#4CAF50'; if(l.rpe >= 5) rpeColor = '#F44336'; else if(l.rpe >= 3) rpeColor = '#FF9800'; return `<div class="log-card" style="border-left-color:${bgClass === 'bg-walk' ? '#4DB6AC' : '#ddd'};"><div class="log-left"><span class="log-badge ${bgClass}">${l.memo}</span><span class="log-date">${new Date(l.date).toLocaleString()}</span></div><div class="log-right"><div>${Math.floor(l.duration/60)}分 / <span style="color:${rpeColor}">RPE${l.rpe}</span></div><div style="font-size:12px; color:#888;">${l.steps}歩</div></div></div>`; }).reverse().join('');
             }
         }
 
@@ -415,23 +324,11 @@
             if(btn) setActiveTab(btn);
             if (Object.keys(cachedWatcherLogs).length === 0 || !range) {
                 const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:'2m'});
-                if(res.status === 'success') {
-                    cachedWatcherLogs = res.logs;
-                    if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice;
-                    if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]);
-                    updateChatArea('watcher-msg-display-area', res.messages);
-                    if(res.messages.length > 0) {
-                        const lastMsg = res.messages[res.messages.length-1];
-                        if(lastMsg.from !== currentUser && lastMsg.is_read !== 'TRUE') {
-                            callAPI({action:'mark_read', username:currentUser, class_id:currentClass});
-                        }
-                    }
-                }
+                if(res.status === 'success') { cachedWatcherLogs = res.logs; if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice; if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]); }
             }
             if(range) {
                 const container = document.getElementById('watcher-member-list'); container.innerHTML = "";
-                const cutoff = new Date();
-                if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
+                const cutoff = new Date(); if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60);
                 for (const [member, logs] of Object.entries(cachedWatcherLogs)) {
                     const displayLogs = logs.filter(l => new Date(l.date) >= cutoff);
                     const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / <span style="font-weight:bold; color:#FF9800;">RPE${l.rpe}</span> / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>';
@@ -440,48 +337,115 @@
             }
         }
 
-        function updateChatArea(elementId, messages) {
-            const msgArea = document.getElementById(elementId);
-            if(messages.length===0) { msgArea.innerHTML='<div style="padding:10px; color:#aaa; text-align:center;">履歴なし</div>'; return; }
-            const html = messages.map(m => {
-                const isMe = m.from === currentUser;
-                return `<div style="display:flex; flex-direction:column; width:100%;"><div class="chat-bubble ${isMe ? 'chat-right' : 'chat-left'}"><div class="chat-meta">${isMe ? 'あなた' : m.from}</div>${m.content}</div>${isMe && m.is_read==='TRUE' ? '<div class="read-status">既読</div>' : ''}</div>`;
-            }).join('');
-            if(msgArea.innerHTML.length !== html.length) { msgArea.innerHTML = html; msgArea.scrollTop = msgArea.scrollHeight; }
-        }
-
-        async function sendMessage(mode) {
-            const inputId = mode === 'user' ? 'user-msg-input' : 'watcher-msg-input';
-            const areaId = mode === 'user' ? 'msg-display-area' : 'watcher-msg-display-area';
-            const txt = document.getElementById(inputId).value;
-            if(!txt) return;
-            stopAutoRefresh();
-            const area = document.getElementById(areaId);
-            area.innerHTML += `<div style="display:flex; flex-direction:column; width:100%;"><div class="chat-bubble chat-right" style="opacity:0.7;"><div class="chat-meta">送信中...</div>${txt}</div></div>`;
-            area.scrollTop = area.scrollHeight;
-            document.getElementById(inputId).value = '';
-            await callAPI({action:'send_message', class_id:currentClass, from_user:currentUser, to_user:'all', content:txt});
-            if(mode === 'user') await loadUserHomeData(null, null); else await loadWatcherHistory(null, null);
-            startAutoRefresh();
-        }
-
+        // チャット・グラフ・歩数計
+        function loadChatHistory() { const saved = localStorage.getItem('ipo_chat_' + currentUser); if (saved) { chatHistory = JSON.parse(saved); renderChat(); } }
+        function renderChat() { const container = document.getElementById('ai-chat-container'); const existingBubbles = container.querySelectorAll('div:not(#ai-advice-initial)'); existingBubbles.forEach(b => b.remove()); chatHistory.forEach(msg => { const div = document.createElement('div'); div.className = msg.role === 'user' ? 'user-chat-bubble' : 'ai-chat-bubble'; div.innerText = msg.text; container.appendChild(div); }); container.scrollTop = container.scrollHeight; }
+        async function sendToAi() { const input = document.getElementById('ai-chat-input'); const msg = input.value; chatHistory.push({role: 'user', text: msg}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); input.value = ""; const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: chatHistory.slice(-6)}); chatHistory.push({role: 'ai', text: res.reply || "エラー"}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); }
         function updateStepChart(mode, range, btn) { if(btn) setActiveTab(btn); if(mode === 'user') renderStepChart('user', range, cachedUserLogs); else { const members = Object.keys(cachedWatcherLogs); if(members.length > 0) renderStepChart('watcher', range, cachedWatcherLogs[members[0]], members[0]); } }
         function renderStepChart(mode, range, logs, memberName) { const ctx = document.getElementById(mode === 'user' ? 'userStepChart' : 'watcherStepChart').getContext('2d'); if(mode === 'user' && userChart) userChart.destroy(); if(mode === 'watcher' && watcherChart) watcherChart.destroy(); const daysMap = {}; const daysCount = range === '1w' ? 7 : (range === '1m' ? 30 : 60); for(let i=daysCount-1; i>=0; i--) { const d = new Date(); d.setDate(d.getDate() - i); daysMap[d.toLocaleDateString()] = 0; } logs.forEach(l => { const dStr = new Date(l.date).toLocaleDateString(); if(daysMap.hasOwnProperty(dStr) && l.steps > daysMap[dStr]) daysMap[dStr] = l.steps; }); const config = { type: 'line', data: { labels: Object.keys(daysMap).map(d => d.slice(5)), datasets: [{ label: (memberName?memberName+'の':'')+'歩数', data: Object.values(daysMap), borderColor: '#FF9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', fill: true, tension: 0.1 }] }, options: { scales: { y: { beginAtZero: true } } } }; if(mode === 'user') userChart = new Chart(ctx, config); else watcherChart = new Chart(ctx, config); }
-        async function sendToAi() { const input = document.getElementById('ai-chat-input'); const msg = input.value; chatHistory.push({role: 'user', text: msg}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); input.value = ""; const res = await callAPI({action:'chat_with_ai', username:currentUser, message:msg, history: chatHistory.slice(-6)}); chatHistory.push({role: 'ai', text: res.reply || "エラー"}); localStorage.setItem('ipo_chat_' + currentUser, JSON.stringify(chatHistory)); renderChat(); }
-        function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
-        async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
-        async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
-        async function submitLog(){ let t=document.getElementById('act-type').value; if(t==='その他') t=document.getElementById('act-other-input').value; const tm=document.getElementById('timer-val').innerText.split(':'); const sec=parseInt(tm[1])*60+parseInt(tm[2]); if(selectedRpeValue===0) return alert("選択してください"); await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:sec, rpe:selectedRpeValue, memo:t, steps:stepCount}); alert("記録完了"); goHome(); loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); }
-        function goHome(){ document.getElementById('screen-home').classList.remove('hidden'); document.getElementById('screen-record').classList.add('hidden'); }
-        function goToRecord(){ document.getElementById('screen-home').classList.add('hidden'); document.getElementById('screen-record').classList.remove('hidden'); }
-        function checkActivityType(){ document.getElementById('act-other-input').classList.toggle('hidden', document.getElementById('act-type').value!=='その他'); }
-        function toggleTimer(){ const btn=document.getElementById('btn-timer'); if(!isTimerRunning){ startTime=Date.now(); timerInterval=setInterval(()=>{const d=Date.now()-startTime;document.getElementById('timer-val').innerText=`00:${String(Math.floor(d/60000)).padStart(2,'0')}:${String(Math.floor((d%60000)/1000)).padStart(2,'0')}`;},100); isTimerRunning=true; btn.innerText="ストップ"; btn.style.background="#E53935"; } else{ clearInterval(timerInterval); isTimerRunning=false; btn.innerText="スタート"; btn.style.background="#66BB6A"; } }
-        function selectRpe(v,b){ selectedRpeValue=v; document.querySelectorAll('.rpe-btn').forEach(bb=>bb.classList.remove('selected')); b.classList.add('selected'); }
-        async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
-        function logout(){ location.reload(); }
         function enableSensors() { if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') { DeviceMotionEvent.requestPermission().then(r => { if (r === 'granted') { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }).catch(console.error); } else { startStepCounting(); document.getElementById('step-switch-area').style.display='none'; alert("計測開始"); } }
         function startStepCounting() { window.addEventListener('devicemotion', (e)=>{ const a=e.accelerationIncludingGravity; if(!a)return; if(Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z)>11 && Date.now()-(window.lt||0)>400){ stepCount++; window.lt=Date.now(); localStorage.setItem('ipo_steps_'+new Date().toDateString(), stepCount); if(document.getElementById('sum-steps')) document.getElementById('sum-steps').innerText=stepCount.toLocaleString(); }}); }
         const s=localStorage.getItem('ipo_steps_'+new Date().toDateString()); if(s) stepCount=parseInt(s);
+        function startAutoRefresh() {} function stopAutoRefresh() {} function setActiveTab(btn) { btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+        async function createClass() { const name = prompt("クラス名を入力"); if(!name) return; const res = await callAPI({action:'create_class', class_name:name, username:currentUser}); if(res.status==='success') { alert("作成しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:currentUser}); showHub(); } }
+        async function joinClass() { const code = document.getElementById('hub-join-code').value; if(!code) return; const res = await callAPI({action:'join_class', class_id:code, username:currentUser}); if(res.status==='success') { alert("参加しました"); myClasses.push({id:res.class_id, name:res.class_name, owner:'unknown'}); showHub(); } else alert(res.message); }
+
+        // ★★★ 記録機能の更新部分 ★★★
+
+        // タブ切り替え処理
+        function switchRecordTab(mode) {
+            currentRecordTab = mode;
+            document.getElementById('tab-now').classList.toggle('active', mode === 'now');
+            document.getElementById('tab-past').classList.toggle('active', mode === 'past');
+            document.getElementById('record-now-section').classList.toggle('hidden', mode !== 'now');
+            document.getElementById('record-past-section').classList.toggle('hidden', mode !== 'past');
+        }
+
+        // 活動タイプの切り替え（nowとpastで別々に処理）
+        function checkActivityType(mode) { 
+            const selValue = document.getElementById('act-type-' + mode).value;
+            document.getElementById('act-other-input-' + mode).classList.toggle('hidden', selValue !== 'その他'); 
+        }
+
+        // タイマー処理
+        function toggleTimer(){ 
+            const btn=document.getElementById('btn-timer'); 
+            if(!isTimerRunning){ 
+                startTime=Date.now(); 
+                timerInterval=setInterval(()=>{
+                    const d=Date.now()-startTime;
+                    document.getElementById('timer-val').innerText=`00:${String(Math.floor(d/60000)).padStart(2,'0')}:${String(Math.floor((d%60000)/1000)).padStart(2,'0')}`;
+                },100); 
+                isTimerRunning=true; btn.innerText="ストップ"; btn.style.background="#E53935"; 
+            } else { 
+                clearInterval(timerInterval); isTimerRunning=false; btn.innerText="スタート"; btn.style.background="#66BB6A"; 
+            } 
+        }
+
+        // RPE（疲労度）選択（nowとpastで別々に状態を保持）
+        function selectRpe(mode, v, b) { 
+            if (mode === 'now') {
+                selectedRpeNow = v; 
+                document.querySelectorAll('.rpe-now').forEach(bb=>bb.classList.remove('selected')); 
+            } else {
+                selectedRpePast = v; 
+                document.querySelectorAll('.rpe-past').forEach(bb=>bb.classList.remove('selected')); 
+            }
+            b.classList.add('selected'); 
+        }
+
+        // 送信処理（どちらのタブが開いているかで取得する値を変える）
+        async function submitLog() {
+            let memo, durationSec, rpe, steps;
+
+            if (currentRecordTab === 'now') {
+                // 【今から記録する】のデータ取得
+                let t = document.getElementById('act-type-now').value; 
+                if(t === 'その他') t = document.getElementById('act-other-input-now').value; 
+                
+                const tm = document.getElementById('timer-val').innerText.split(':'); 
+                durationSec = parseInt(tm[1])*60 + parseInt(tm[2]); 
+                rpe = selectedRpeNow;
+                memo = t;
+                steps = stepCount; // センサーで計測した歩数
+
+                if(rpe === 0) return alert("疲労度を選択してください"); 
+            } else {
+                // 【過去の記録をつける】のデータ取得
+                let t = document.getElementById('act-type-past').value; 
+                if(t === 'その他') t = document.getElementById('act-other-input-past').value; 
+                
+                const durInput = document.getElementById('past-duration').value;
+                if (!durInput || isNaN(durInput)) return alert("活動時間を半角数字で正しく入力してください");
+                durationSec = parseInt(durInput) * 60; // 分を秒に変換
+
+                rpe = selectedRpePast;
+                memo = t;
+
+                const stepInput = document.getElementById('past-steps').value;
+                steps = (stepInput && !isNaN(stepInput)) ? parseInt(stepInput) : 0; // 任意なので空なら0
+
+                if(rpe === 0) return alert("疲労度を選択してください"); 
+            }
+
+            // GASへデータ送信
+            await callAPI({action:'record_log', username:currentUser, class_id:currentClass||'none', duration:durationSec, rpe:rpe, memo:memo, steps:steps}); 
+            alert("記録が完了しました！"); 
+
+            // 入力欄と変数のリセット処理
+            if(isTimerRunning) toggleTimer(); 
+            document.getElementById('timer-val').innerText = "00:00:00";
+            document.getElementById('past-duration').value = "";
+            document.getElementById('past-steps').value = "";
+            selectedRpeNow = 0; selectedRpePast = 0;
+            document.querySelectorAll('.rpe-btn').forEach(b => b.classList.remove('selected'));
+
+            goHome(); 
+            loadUserHomeData('1d', document.querySelector('#screen-home .tab-btn')); 
+        }
+
+        async function callAPI(d){ try{return await(await fetch(GAS_URL,{method:'POST',body:JSON.stringify(d)})).json();}catch(e){return{status:'error'};} }
+        function logout(){ location.reload(); }
     </script>
 </body>
 </html>
