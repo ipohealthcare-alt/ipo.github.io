@@ -297,7 +297,7 @@
     </div>
 
     <script>
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyDgVbEo8FRmdOBQk3lRYlU8p_LMmD4k-WAectLZIwTB8OdnExH1_FLtOLOlvy54AvR/exec"; // ★ご自身のGAS URLを入れてください
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxBiwO8nuCEtlFFtaWN3sjTS8k1nJVXN-jdbpZQP4_Jo8ny8AtsNoxARQBQCf-P1HA6/exec"; // GAS URL
 
         let currentUser=null, currentClass=null, myClasses=[], userType=null;
         let stepCount=0, timerInterval, startTime, isTimerRunning=false;
@@ -356,7 +356,7 @@
             }
         }
 
-        // ★★★ 新機能：お守りの木の成長ロジック ★★★
+
         function updateTree(logs, stampCount) {
             const now = new Date();
             const month = now.getMonth() + 1;
@@ -366,25 +366,25 @@
             const treeEmoji = document.getElementById('tree-emoji');
             const treeDeco = document.getElementById('tree-deco');
             
-            // 1. 時間帯で背景と装飾を変更 (これまで通り)
+    
             let decoStr = '';
             if(hour >= 5 && hour < 10) { treeBg.style.background = 'linear-gradient(to bottom, #87CEEB, #E0F6FF)'; decoStr += '💧'; } 
             else if(hour >= 10 && hour < 16) { treeBg.style.background = 'linear-gradient(to bottom, #4FC3F7, #B3E5FC)'; } 
             else if(hour >= 16 && hour < 19) { treeBg.style.background = 'linear-gradient(to bottom, #FFB74D, #FFE0B2)'; } 
             else { treeBg.style.background = 'linear-gradient(to bottom, #2C3E50, #4CA1AF)'; decoStr += '🏮'; } 
             
-            // 2. スタンプ数（成長度）と月による木の変化
+           
             let baseTree = '🌱';
             if (stampCount <= 5) {
-                baseTree = '🌱'; // 苗
+                baseTree = '🌱'; 
             } else if (stampCount <= 10) {
-                baseTree = '🌿'; // 小さい木
+                baseTree = '🌿'; 
             } else if (stampCount <= 24) {
                 // 中ぐらいの木 (11〜24個)
-                if (month === 12 || month === 1) baseTree = '🌲'; // 冬は針葉樹
-                else if (month === 7) baseTree = '🎋'; // 7月は笹
-                else if (month === 8) baseTree = '🌴'; // 8月はヤシ
-                else baseTree = '🌳'; // その他は広葉樹
+                if (month === 12 || month === 1) baseTree = '🌲'; 
+                else if (month === 7) baseTree = '🎋'; 
+                else if (month === 8) baseTree = '🌴'; 
+                else baseTree = '🌳'; 
             } else {
                 // 25個以上: 各月の花等を咲かせて達成感
                 const flowers = { 1:'🎍', 2:'🌺', 3:'🍑', 4:'🌸', 5:'🌷', 6:'🪻', 7:'🎋✨', 8:'🌻', 9:'🍇', 10:'🍁', 11:'🍂', 12:'🎄' };
@@ -412,7 +412,7 @@
             treeDeco.innerText = decoStr;
         }
 
-        // 彩りカレンダーの描画 (スタンプ数を返すように変更)
+        // 彩りカレンダーの描画 
         function renderCalendar(logs, messages) {
             const now = new Date();
             const year = now.getFullYear();
@@ -459,7 +459,7 @@
             document.getElementById('calendar-grid').innerHTML = html;
             document.getElementById('stamp-count').innerText = stampCount;
             
-            return stampCount; // ここで計算したスタンプ数を返す
+            return stampCount; // 計算したスタンプ数
         }
 
         async function loadWatcherHistory(range, btn) { if(btn) setActiveTab(btn); if (Object.keys(cachedWatcherLogs).length === 0 || !range) { const res = await callAPI({action:'get_class_detail', class_id:currentClass, username:currentUser, range:'2m'}); if(res.status === 'success') { cachedWatcherLogs = res.logs; if(range) document.getElementById('watcher-ai-msg').innerText = res.ai_advice; updateChatArea('watcher-msg-display-area', res.messages); if(res.members.length > 0 && range) renderStepChart('watcher', '1w', res.logs[res.members[0]], res.members[0]); } } if(range) { const container = document.getElementById('watcher-member-list'); container.innerHTML = ""; const cutoff = new Date(); if(range==='1d') cutoff.setHours(0,0,0,0); else if(range==='1w') cutoff.setDate(cutoff.getDate()-7); else if(range==='1m') cutoff.setDate(cutoff.getDate()-30); else cutoff.setDate(cutoff.getDate()-60); for (const [member, logs] of Object.entries(cachedWatcherLogs)) { const displayLogs = logs.filter(l => new Date(l.date) >= cutoff); const logHtml = displayLogs.length ? displayLogs.map(l => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #f0f0f0; font-size:13px;"><span>${new Date(l.date).toLocaleDateString()} [${l.memo}]</span><span>${Math.floor(l.duration/60)}分 / <span style="font-weight:bold; color:#FF9800;">RPE${l.rpe}</span> / ${l.steps}歩</span></div>`).reverse().join('') : '<div style="color:#aaa; font-size:12px;">記録なし</div>'; container.innerHTML += `<div style="border-bottom:1px solid #eee; padding:15px 0;"><div style="font-weight:bold; margin-bottom:5px; color:#1967d2;">👤 ${member}</div>${logHtml}</div>`; } } }
